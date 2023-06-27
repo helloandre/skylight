@@ -712,11 +712,6 @@ C22.32,8.481,24.301,9.057,26.013,10.047z">
   },
 };
 
-export const SITE = {
-  cover_image:
-    "https://images.unsplash.com/photo-1557682250-33bd709cbe85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxMTc3M3wwfDF8c2VhcmNofDI1fHxncmFkaWVudHxlbnwwfHx8fDE2NTMxOTA4NjY&ixlib=rb-1.2.1&q=80&w=2000",
-};
-
 export const CONFIG = {
   posts_per_page: 25,
   image_sizes: {

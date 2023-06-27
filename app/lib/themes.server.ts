@@ -216,22 +216,6 @@ export async function template(
     throw new Error(`theme ${name} does not exist`);
   }
 
-  //TODO
-  globalConfig.site = {
-    ...globalConfig.site,
-    title: "Ghost",
-    description: "Thoughts, stories and ideas",
-    cover_image: "https://static.ghost.org/v5.0.0/images/publication-cover.jpg",
-    accent_color: "#FF1A75",
-    locale: "en",
-    timezone: "Etc/UTC",
-    navigation: JSON.parse(
-      `[{"label":"Home","url":"/"},{"label":"About","url":"/about/"}]`
-    ),
-    secondary_navigation: JSON.parse('[{"label":"Sign up","url":"#/portal/"}]'),
-    icon: "/favicon.ico",
-  };
-
   return ghostTheme
     .withTemplates(await _templates(name))
     .withPartials(await _partials(name))

@@ -8,8 +8,8 @@ import { save as saveConfig } from "../config.server";
 import { save as saveTag } from "../tags.server";
 import { saveAll as saveAllPosts } from "../posts.server";
 import { randomHex } from "../crypto.server";
-import { CONFIG, THEME, SITE } from "./casper.server";
-import { POSTS, TAGS } from "./seed_data.server";
+import { CONFIG, THEME } from "./casper.server";
+import { POSTS, TAGS, SITE } from "./seed_data.server";
 import type { User } from "../users.server";
 import { DateTime } from "luxon";
 

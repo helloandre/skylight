@@ -1,5 +1,5 @@
 import { getSession } from "~/lib/sessions";
-import { hash, verify } from "~/lib/crypto.server";
+import { hash, sha256, verify } from "~/lib/crypto.server";
 import { env } from "./env.server";
 import { randomHex } from "~/lib/crypto.server";
 
@@ -82,8 +82,9 @@ export async function create({ email, password, role, name }: CreateParams) {
   };
 
   const KV = env("KV") as KVNamespace;
-  await KV.put(`${USER_BASE}.users.${user.user.id}`, JSON.stringify(user));
-  await KV.put(`${USER_BASE}.email_to_id.${user.user.email}`, user.user.id);
+  await KV.put(`${USER_BASE}.user.${user.user.id}`, JSON.stringify(user));
+  const emailHash = await sha256(user.user.email);
+  await KV.put(`${USER_BASE}.email_to_id.${emailHash}`, user.user.id);
 
   // await _db()
   //   .prepare(`INSERT INTO User(email,password,role) VALUES (?1,?2,?3)`)
@@ -96,16 +97,14 @@ export async function create({ email, password, role, name }: CreateParams) {
 async function getUserObject({ id, email }: GetParams) {
   const KV = env("KV") as KVNamespace;
   if (email) {
-    id = (await KV.get(`${USER_BASE}.email_to_id.${email}`)) || undefined;
+    const emailHash = await sha256(email);
+    id = (await KV.get(`${USER_BASE}.email_to_id.${emailHash}`)) || undefined;
   }
   if (!id) {
     return null;
   }
 
-  const uo = await KV.get<UserObject | null>(
-    `${USER_BASE}.users.${id}`,
-    "json"
-  );
+  const uo = await KV.get<UserObject | null>(`${USER_BASE}.user.${id}`, "json");
 
   return uo ? uo : null;
 }

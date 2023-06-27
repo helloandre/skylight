@@ -104,8 +104,21 @@ export async function verify(key: string, password: string) {
 }
 
 export function randomHex(n: number) {
-  let bytes = new Uint8Array(Math.ceil(n / 2));
-  crypto.getRandomValues(bytes);
+  let buff = new Uint8Array(Math.ceil(n / 2));
+  crypto.getRandomValues(buff);
+  return buffToHex(buff);
+}
+
+export async function sha256(str: string) {
+  const buff = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(str)
+  );
+
+  return buffToHex(new Uint8Array(buff));
+}
+
+function buffToHex(bytes: Uint8Array) {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

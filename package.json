@@ -1,14 +1,16 @@
 {
+  "name": "skylight",
   "private": true,
   "sideEffects": false,
   "scripts": {
     "build": "remix build",
+    "start": "cross-env NODE_ENV=production npm run wrangler",
+    "dev": "npm-run-all build --parallel \"dev:*\"",
     "dev:remix": "remix watch",
     "dev:wrangler": "cross-env NODE_ENV=development npm run wrangler",
-    "dev": "npm-run-all build --parallel \"dev:*\"",
-    "start": "cross-env NODE_ENV=production npm run wrangler",
+    "wrangler": "wrangler pages dev ./public --compatibility-date=2023-05-11 --compatibility-flag=nodejs_compat --kv KV",
     "typecheck": "tsc",
-    "wrangler": "wrangler pages dev ./public --compatibility-date=2023-05-11 --compatibility-flag=nodejs_compat --kv KV --persist"
+    "deploy": "npm run build && CLOUDFLARE_ACCOUNT_ID=f9f2b27c9d4c59bfb4c96c4f0cdeb845 wrangler pages deploy ./public --project-name=skylightdemo"
   },
   "dependencies": {
     "@remix-run/cloudflare": "^1.16.0",
@@ -36,7 +38,7 @@
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^3.3.2",
     "typescript": "^5.0.4",
-    "wrangler": "^2.15.1"
+    "wrangler": "^3.1.1"
   },
   "engines": {
     "node": ">=16.13"

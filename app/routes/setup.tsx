@@ -14,7 +14,6 @@ type FormData = {
   password: string;
 };
 
-// Note the "action" export name, this will handle our form POST
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
   const siteTitle = formData.get("siteTitle") as string;
@@ -82,7 +81,7 @@ export default function Index() {
     <div className="container mx-auto">
       <div className="bg-base-200 mx-auto lg:mt-24 md:w-full lg:w-1/2 card card-bordered card-normal shadow-xl">
         <div className="card-body">
-          <h2 className="card-title text-4xl">Welcome to Skylight</h2>
+          <h2 className="card-title text-4xl">Welcome to Skylight 🌤️</h2>
           <div>
             <form method="post">
               <div className="form-control my-5">
@@ -129,7 +128,7 @@ export default function Index() {
                 </label>
 
                 <label className="label">
-                  <span className="label-text font-bold">Name</span>
+                  <span className="label-text font-bold">Admin Name</span>
                 </label>
                 <input
                   type="text"
@@ -150,7 +149,7 @@ export default function Index() {
                 </label>
 
                 <label className="label">
-                  <span className="label-text font-bold">Email</span>
+                  <span className="label-text font-bold">Admin Email</span>
                 </label>
                 <input
                   type="email"
@@ -171,7 +170,7 @@ export default function Index() {
                 </label>
 
                 <label className="label">
-                  <span className="label-text font-bold">Password</span>
+                  <span className="label-text font-bold">Admin Password</span>
                 </label>
                 <input
                   type="password"

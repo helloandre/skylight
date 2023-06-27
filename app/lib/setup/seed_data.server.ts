@@ -1,6 +1,19 @@
 import type { Post } from "../posts.server";
 import type { Tag } from "../tags.server";
 
+export const SITE = {
+  cover_image:
+    "https://images.unsplash.com/photo-1557682250-33bd709cbe85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxMTc3M3wwfDF8c2VhcmNofDI1fHxncmFkaWVudHxlbnwwfHx8fDE2NTMxOTA4NjY&ixlib=rb-1.2.1&q=80&w=2000",
+  navigation: [
+    { label: "Home", url: "/" },
+    { label: "About", url: "/about/" },
+  ],
+  secondary_navigation: [{ label: "Sign up", url: "#/portal/" }],
+  accent_color: "#FF1A75",
+  timezone: "Etc/UTC",
+  icon: "/favicon.ico",
+};
+
 export const TAGS: Tag[] = [
   {
     id: "645f5abac5efc800019856d7",

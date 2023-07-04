@@ -4,7 +4,7 @@ import type {
   GhostConfiguration,
   SiteConfiguration,
   ThemeConfiguration,
-} from "workers-compat-ghost-theme";
+} from "skylight-theme-compat-ghost";
 
 const CONFIG_BASE = "v1.config";
 let cache: null | Promise<any> = null;

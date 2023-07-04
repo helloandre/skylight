@@ -1,6 +1,6 @@
 import type { LoaderArgs, LoaderFunction } from "@remix-run/cloudflare";
 import { redirect } from "@remix-run/cloudflare";
-import { config } from "../lib/config.server";
+import { config } from "./config.server";
 import { getFromSession } from "./users.server";
 
 export function loaderWrap(fn: LoaderFunction) {

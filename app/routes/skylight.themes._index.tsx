@@ -1,8 +1,8 @@
 import type { ActionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import { Link, useLoaderData } from "@remix-run/react";
-import { adminActionWrap } from "~/lib/action.server";
-import { adminLoaderWrap } from "~/lib/loader.server";
+import { adminActionWrap } from "~/lib/action";
+import { adminLoaderWrap } from "~/lib/loader";
 import type { ThemeObj } from "~/lib/themes.server";
 import {
   list,

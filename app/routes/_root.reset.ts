@@ -3,7 +3,6 @@ import { env } from "~/lib/env.server";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const { hostname } = new URL(request.url);
-  console.log(hostname);
 
   // SeCuRiTy
   if (hostname !== "skylightdemo.pages.dev" && hostname !== "localhost") {

@@ -1,11 +1,12 @@
 import type { ActionArgs, ActionFunction } from "@remix-run/cloudflare";
 import { redirect } from "@remix-run/cloudflare";
-import { config } from "../lib/config.server";
+import * as configServer from "./config.server";
+import type { User } from "./users.server";
 import { getFromSession } from "./users.server";
 
 export function userActionWrap(fn: ActionFunction) {
   return async function actionWrapper(args: ActionArgs) {
-    const installed = await config("ghost");
+    const installed = await configServer.config("ghost");
     if (!installed) {
       return redirect("/setup");
     }
@@ -15,13 +16,13 @@ export function userActionWrap(fn: ActionFunction) {
       return redirect("/skylight/login");
     }
 
-    return fn(args);
+    return fn({ ...args, user } as ActionArgs & { user: User });
   };
 }
 
 export function adminActionWrap(fn: ActionFunction) {
   return async function actionWrapper(args: ActionArgs) {
-    const installed = await config("ghost");
+    const installed = await configServer.config("ghost");
     if (!installed) {
       return redirect("/setup");
     }

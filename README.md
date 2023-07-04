@@ -1,6 +1,21 @@
-# Welcome to Remix!
+# Skylight 🌤️
 
-- [Remix Docs](https://remix.run/docs)
+A blogging platform built entirely on Workers Pages with Ghost-compatable themes.
+
+Built With:
+
+- [Remix](https://remix.run)
+- [Workers Pages](https://developers.cloudflare.com/pages/)
+- [DaisyUI](https://daisyui.com/)
+
+## Installation
+
+> NOTE: pre-release deployment steps intended for testing _ONLY_
+
+- `npm run deploy`
+  - chose the account and project (or create a new one)
+- add a KV Namespace to the variable `KV`
+  - [docs](https://developers.cloudflare.com/pages/platform/functions/bindings/#kv-namespaces)
 
 ## Development
 
@@ -13,10 +28,25 @@ npm run dev
 
 Open up [http://127.0.0.1:8788](http://127.0.0.1:8788) and you should be ready to go!
 
-## Deployment
+## TODO
 
-Cloudflare Pages are currently only deployable through their Git provider integrations.
+Functionality:
 
-If you don't already have an account, then [create a Cloudflare account here](https://dash.cloudflare.com/sign-up/pages) and after verifying your email address with Cloudflare, go to your dashboard and follow the [Cloudflare Pages deployment guide](https://developers.cloudflare.com/pages/framework-guides/deploy-anything).
+- scheduled posts
+- proper editor experience, maybe https://tiptap.dev/
+- membership signup
+- author signup
+- authors on posts
+- tags on posts
+- sending emails
+- settings
+- upload theme
 
-Configure the "Build command" should be set to `npm run build`, and the "Build output directory" should be set to `public`.
+Tech:
+
+- proper indexing of posts/users
+  - Durable Objects or D1
+
+## License
+
+Skylight is released under the MIT license.

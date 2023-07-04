@@ -1,4 +1,4 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from "tailwindcss";
 
 export default {
   content: ["./app/**/*.{js,jsx,ts,tsx}"],
@@ -7,7 +7,6 @@ export default {
   },
   plugins: [require("daisyui")],
   daisyui: {
-    themes: ['light']
-  }
-} satisfies Config
-
+    themes: ["fantasy"],
+  },
+} satisfies Config;

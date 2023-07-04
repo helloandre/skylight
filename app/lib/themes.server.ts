@@ -5,8 +5,8 @@ import type {
   GhostConfiguration,
   TemplatesObj,
   PaginationSettings,
-} from "workers-compat-ghost-theme";
-import ghostTheme from "workers-compat-ghost-theme";
+} from "skylight-theme-compat-ghost";
+import ghostTheme from "skylight-theme-compat-ghost";
 import type { SkylightConfiguration } from "./config.server";
 import { config as getConfig } from "./config.server";
 import type { Post } from "./posts.server";
@@ -162,7 +162,7 @@ async function _partials(name: string) {
   );
 
   return Promise.all(promises).then((partials) => {
-    let partialsObj: { [idx: string]: string } = {};
+    const partialsObj: { [idx: string]: string } = {};
     keys.forEach((key, idx) => {
       partialsObj[key] = partials[idx] || "";
     });
@@ -174,25 +174,26 @@ async function _partials(name: string) {
  * @TODO optimize this by building a depedencies array
  * so we can only load the templates we need based on the entry template
  */
-async function _templates(name: string) {
+async function _templates(themeName: string) {
   const KV = env("KV") as KVNamespace;
   const keys = await KV.get<string[]>(
-    `${KEY_BASE}.${name}.templatesIdx`,
+    `${KEY_BASE}.${themeName}.templatesIdx`,
     "json"
   );
   if (!keys) {
-    throw new Error(`template ${name} does not exist`);
+    throw new Error(`theme ${themeName} does not exist`);
   }
   const promises = keys.map((key) =>
     KV.get<TemplateKVFormat>(
-      `${KEY_BASE}.${name}.templates.${key}`,
+      `${KEY_BASE}.${themeName}.templates.${key}`,
       "json"
     ).then((t) => (t === null ? "" : t.template))
   );
 
   return Promise.all(promises).then((templates) => {
+    // TODO figure out how to make TS happy that we're *going* to make this object the correct type
     // @ts-ignore
-    let templatesObj: TemplatesObj = {};
+    const templatesObj: TemplatesObj = {};
     keys.forEach((key, idx) => {
       templatesObj[key] = templates[idx] || "";
     });

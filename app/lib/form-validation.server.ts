@@ -1,12 +1,12 @@
-type FieldValidator = string | ValidatorFunction;
-type ValidatorFunction = (field: string) => boolean;
+type ValidatorFunction = (validator: string) => boolean;
+type Validator = string | ValidatorFunction;
 
-export type Field = {
+export type Checker = {
   name: string;
   value: string;
   valid?: boolean;
-  validator?: FieldValidator;
-  validators?: FieldValidator[];
+  validator?: Validator;
+  validators?: Validator[];
   message?: string;
 };
 
@@ -17,26 +17,28 @@ type Validity = {
 };
 
 const VALIDATORS: {
-  [field: string]: ValidatorFunction;
+  [validator: string]: ValidatorFunction;
 } = {
   username: (u) => typeof u === "string" && u.length >= 3,
   password: (p) => typeof p === "string" && p.length >= 3,
   email: (e) => typeof e === "string" && /.+@.+\..+/.test(e),
+  nonempty: (p) => typeof p === "string" && p.length >= 0,
 };
-const MESSAGES: { [field: string]: string } = {
+const MESSAGES: { [checker: string]: string } = {
   username: "Username must be at least 3 characters",
   password: "Password must be at least 3 characters",
   email: "Email is invalid",
+  nonempty: "Cannot be empty",
 };
 
-function _validate({ value }: Field, validator: FieldValidator) {
+function _validate({ value }: Checker, validator: Validator) {
   return typeof validator === "string"
     ? VALIDATORS[validator](value)
     : validator(value);
 }
 
-export default function validate(fields: Field[]): Validity[] {
-  return fields.map((f) => {
+export default function validate(checkers: Checker[]): Validity[] {
+  return checkers.map((f) => {
     const valid = f.validator
       ? _validate(f, f.validator)
       : f.validators

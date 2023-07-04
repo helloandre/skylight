@@ -2,6 +2,8 @@ import { env } from "./env.server";
 import type { Tag } from "./tags.server";
 import { getUser, type User } from "./users.server";
 import { tags } from "./tags.server";
+import { randomHex } from "./crypto.server";
+import { now } from "./time";
 
 export type Post = {
   id: string;
@@ -33,86 +35,189 @@ export type Post = {
   author_ids?: string[];
   authors?: User[]; // hydrated on fetch
 };
+export type NewPost = {
+  id: string;
+  status: "draft";
+  type: "post" | "page";
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+};
 
-type GetPageParams = {
-  // 1-indexed
-  page: number;
+type PostStatus = "draft" | "scheduled" | "published";
+type PostType = "page" | "post";
+type ListParams = {
+  status?: PostStatus;
+  type?: PostType;
   limit: number;
+  offset: number;
 };
-type PostFilters = {
-  type?: "page" | "post";
-  status: "draft" | "scheduled" | "published";
-  slug?: string;
-};
+type PostsList = {
+  id: string;
+  type: string;
+  updated_at: string;
+  status: PostStatus;
+}[];
 
-const POST_BASE = "v1.posts";
+const POSTS_BASE = "v1.posts";
+const POSTS_LIST = `${POSTS_BASE}.list`;
+// by post.id
+const POSTS_DRAFT = `${POSTS_BASE}.draft`;
+// by post.slug
+const POSTS_PUBLISHED = `${POSTS_BASE}.published`;
 
-export async function getSlug(slug: string) {
-  const posts = await getList({ status: "published", slug });
-  return posts.pop();
+export function published(slug: string) {
+  return KV().get<Post>(`${POSTS_PUBLISHED}.${slug}`, "json").then(hydrate);
 }
 
-export async function getPage({ page, limit }: GetPageParams) {
-  if (page === 0) {
-    page = 1;
+export function draft(id: string) {
+  return KV().get<Post>(`${POSTS_DRAFT}.${id}`, "json").then(hydrate);
+}
+
+export async function list({
+  offset,
+  limit,
+  status,
+  type,
+}: ListParams): Promise<{ results: Post[]; total: number }> {
+  limit = Math.min(limit, 10);
+
+  // TODO replace with DO or D1
+  const list = (await KV().get<PostsList>(POSTS_LIST, "json")) || [];
+  list.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
+
+  return {
+    total: list.length,
+    results: await Promise.all(
+      list
+        .filter(
+          (p) => (!status || p.status === status) && (!type || p.type === type)
+        )
+        .slice(offset * limit, (offset + 1) * limit)
+        .map(({ status, id }) =>
+          status === "published" ? published(id) : draft(id)
+        )
+    ).then((ps) => ps.filter((p) => p !== null) as Post[]),
+  };
+}
+
+export async function create(user: User) {
+  const post: NewPost = {
+    id: randomHex(20),
+    status: "draft",
+    type: "post",
+    created_at: now(),
+    created_by: user.id,
+    updated_at: now(),
+    updated_by: user.id,
+  };
+
+  await setStatus(post);
+  return KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
+}
+
+export async function publish(
+  post: Post,
+  user: User,
+  dangerouslyDoNotUpdateStatus = false
+) {
+  post.status = "published";
+  post.updated_at = now();
+  post.updated_by = user.id;
+
+  // we don't want to update the published_at if its already published
+  // as we can "republish" posts with updated content
+  if (!post.published_at) {
+    post.published_at = now();
+    post.published_by = user.id;
   }
-  const posts = await getList({ type: "post", status: "published" });
-  return posts.slice((page - 1) * limit, page * limit);
+
+  // only used when seeding
+  if (!dangerouslyDoNotUpdateStatus) {
+    await setStatus(post);
+  }
+  return KV().put(`${POSTS_PUBLISHED}.${post.slug}`, JSON.stringify(post));
+}
+export async function unpublish(post: Post, user: User) {
+  post.status = "draft";
+  post.updated_at = now();
+  post.updated_by = user.id;
+
+  await setStatus(post);
+  await KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
+  return KV().delete(`${POSTS_PUBLISHED}.${post.slug}`);
 }
 
-export async function save(post: Post) {
-  const KV = env("KV") as KVNamespace;
-
-  // @TODO lock via durable object?
-  const posts = (await KV.get<Post[]>(POST_BASE, "json")) || [];
-  return KV.put(
-    POST_BASE,
-    JSON.stringify(posts.filter((p) => p.id !== post.id).concat(post))
-  );
+export async function save(post: Post, user: User) {
+  post.updated_at = now();
+  post.updated_by = user.id;
+  return KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
 }
 
-export async function saveAll(posts: Post[]) {
-  const KV = env("KV") as KVNamespace;
-  return KV.put(POST_BASE, JSON.stringify(posts));
+export async function seed(posts: Post[], user: User) {
+  const list: PostsList = [];
+
+  for (const post of posts) {
+    list.push({
+      id: post.status === "published" ? post.slug : post.id,
+      status: post.status,
+      updated_at: now(),
+      type: post.type,
+    });
+    await save(post, user);
+    if (post.status === "published") {
+      await publish(post, user, true);
+    }
+  }
+
+  await KV().put(POSTS_LIST, JSON.stringify(list));
 }
 
-async function getList({ type, status, slug }: PostFilters) {
-  const KV = env("KV") as KVNamespace;
-  const posts = (await KV.get<Post[]>(POST_BASE, "json")) || [];
+// @TODO use DO or D1
+async function setStatus(post: Post | NewPost) {
+  const posts = ((await KV().get<PostsList>(POSTS_LIST, "json")) || [])
+    .filter(({ id }) => id !== post.id)
+    .concat({
+      id: post.id,
+      status: post.status,
+      updated_at: post.updated_at,
+      type: post.type,
+    });
+  return KV().put(POSTS_LIST, JSON.stringify(posts));
+}
 
-  return Promise.all(
-    posts
-      .filter(
-        (p) =>
-          p.status === status &&
-          (!slug || p.slug === slug) &&
-          (!type || p.type === type)
-      )
-      .map(async (post) => {
-        // hydrate tags
-        if (post.tag_ids) {
-          post.tags = await tags(post.tag_ids);
-          if (post.tags) {
-            post.primary_tag = post.tags[0];
-          }
-        }
+async function hydrate(post: Post | null) {
+  if (!post) {
+    return post;
+  }
 
-        // hydrate authors
-        if (post.author_ids) {
-          // @ts-ignore
-          post.authors = (
-            await Promise.all(post.author_ids.map((id) => getUser({ id })))
-          ).filter((u) => u !== null);
-        }
+  // hydrate tags
+  if (post.tag_ids) {
+    post.tags = await tags(post.tag_ids);
+    if (post.tags) {
+      post.primary_tag = post.tags[0];
+    }
+  }
 
-        // hydrate excerpt
-        if (post.custom_excerpt) {
-          post.excerpt = post.custom_excerpt;
-        } else {
-          post.excerpt = post.plaintext.substring(0, 500);
-        }
+  // hydrate authors
+  if (post.author_ids) {
+    // @ts-ignore
+    post.authors = (
+      await Promise.all(post.author_ids.map((id) => getUser({ id })))
+    ).filter((u) => u !== null);
+  }
 
-        return post;
-      })
-  );
+  // hydrate excerpt
+  if (post.custom_excerpt) {
+    post.excerpt = post.custom_excerpt;
+  } else {
+    post.excerpt = (post.plaintext || "").substring(0, 500);
+  }
+
+  return post;
+}
+
+function KV() {
+  return env("KV") as KVNamespace;
 }

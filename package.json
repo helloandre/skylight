@@ -1,5 +1,6 @@
 {
   "name": "skylight",
+  "version": "0.1.0",
   "private": true,
   "sideEffects": false,
   "scripts": {
@@ -10,13 +11,13 @@
     "dev:wrangler": "cross-env NODE_ENV=development npm run wrangler",
     "wrangler": "wrangler pages dev ./public --compatibility-date=2023-05-11 --compatibility-flag=nodejs_compat --kv KV",
     "typecheck": "tsc",
-    "deploy": "npm run build && CLOUDFLARE_ACCOUNT_ID=f9f2b27c9d4c59bfb4c96c4f0cdeb845 wrangler pages deploy ./public --project-name=skylightdemo"
+    "deploy": "npm run build && wrangler pages deploy ./public"
   },
   "dependencies": {
-    "@remix-run/cloudflare": "^1.16.0",
-    "@remix-run/cloudflare-pages": "^1.16.0",
-    "@remix-run/css-bundle": "^1.16.0",
-    "@remix-run/react": "^1.16.0",
+    "@remix-run/cloudflare": "^1.18.0",
+    "@remix-run/cloudflare-pages": "^1.18.0",
+    "@remix-run/css-bundle": "^1.18.0",
+    "@remix-run/react": "^1.18.0",
     "@types/lodash-es": "^4.17.7",
     "@types/luxon": "^3.3.0",
     "cross-env": "^7.0.3",
@@ -25,15 +26,15 @@
     "luxon": "^3.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "workers-compat-ghost-theme": "file:../workers-compat-ghost-theme"
+    "skylight-theme-compat-ghost": "^0.1.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^3.19.0",
-    "@remix-run/dev": "^1.16.0",
-    "@remix-run/eslint-config": "^1.16.0",
+    "@remix-run/dev": "^1.18.0",
+    "@remix-run/eslint-config": "^1.18.0",
     "@types/react": "^18.0.35",
     "@types/react-dom": "^18.0.11",
-    "daisyui": "^2.51.6",
+    "daisyui": "^3.1.6",
     "eslint": "^8.38.0",
     "npm-run-all": "^4.1.5",
     "tailwindcss": "^3.3.2",

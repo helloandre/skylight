@@ -5,20 +5,20 @@ import { config as getConfig, save as saveConfig } from "../lib/config.server";
 import { userLoaderWrap } from "~/lib/loader";
 import { userActionWrap } from "~/lib/action";
 
-type FormData = {
-  siteTitle: string;
-  siteUrl: string;
-  siteDescription: string;
-};
+// type FormData = {
+//   siteTitle: string;
+//   siteUrl: string;
+//   siteDescription: string;
+// };
 
 export const action = userActionWrap(async ({ request }) => {
   const formData = await request.formData();
   const siteTitle = formData.get("siteTitle") as string;
-  const siteUrl = formData.get("siteUrl") as string;
+  // const siteUrl = formData.get("siteUrl") as string;
   const siteDescription = formData.get("siteDescription") as string;
   const config = (await getConfig()) as SkylightConfiguration;
 
-  await saveConfig({
+  const newConfig = {
     site: {
       ...config.site,
       description: siteDescription,
@@ -26,9 +26,12 @@ export const action = userActionWrap(async ({ request }) => {
     },
     ghost: {
       ...config.ghost,
-      url: siteUrl,
+      // url: siteUrl,
     },
-  });
+  };
+  await saveConfig(newConfig);
+
+  return json({ actionData: newConfig, actionErrors: {} });
 });
 
 export const loader = userLoaderWrap(async () => {
@@ -36,17 +39,13 @@ export const loader = userLoaderWrap(async () => {
 });
 
 export default function Index() {
-  const actionData = useActionData<{ errors?: FormData; values?: FormData }>();
+  const { actionData } = useActionData<typeof action>() || {};
   const loaderData = useLoaderData<typeof loader>();
+  const values = actionData || loaderData;
 
   const defaultValues = {
-    siteUrl: actionData ? actionData.values?.siteUrl : loaderData.ghost.url,
-    siteTitle: actionData
-      ? actionData.values?.siteTitle
-      : loaderData.site.title,
-    siteDescription: actionData
-      ? actionData.values?.siteDescription
-      : loaderData.site.title,
+    siteTitle: values.site.title,
+    siteDescription: values.site.title,
   };
 
   return (
@@ -57,21 +56,11 @@ export default function Index() {
         </label>
         <input
           type="text"
-          className={`input input-bordered w-full ${
-            actionData?.errors?.siteUrl ? "input-error" : ""
-          }`}
+          className="input input-bordered w-full"
           name="siteUrl"
-          defaultValue={defaultValues.siteUrl}
+          defaultValue={loaderData.ghost.url}
+          disabled
         />
-        <label className="label">
-          {actionData?.errors?.siteUrl ? (
-            <span className="label-text-alt text-error">
-              {actionData?.errors?.siteUrl}
-            </span>
-          ) : (
-            ""
-          )}
-        </label>
 
         <label className="label">
           <span className="label-text font-bold">Site Title</span>

@@ -3,13 +3,13 @@ import { redirect, json } from "@remix-run/cloudflare";
 import { useActionData } from "@remix-run/react";
 import { login } from "~/lib/users.server";
 import { getSession, setSessionUser } from "~/lib/sessions";
-import type { Checker } from "~/lib/form-validation.server";
-import validate from "~/lib/form-validation.server";
+import type { Validity } from "~/lib/validation.server";
+import validate from "~/lib/validation.server";
 import { loaderWrap } from "~/lib/loader";
 
 type ActionData = {
   formError?: string;
-  fields?: Checker[];
+  fields?: Validity[];
 };
 
 export const action: ActionFunction = async ({ request }) => {

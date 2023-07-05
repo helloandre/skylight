@@ -1,17 +1,15 @@
 type ValidatorFunction = (validator: string) => boolean;
 type Validator = string | ValidatorFunction;
 
-export type Checker = {
+export type Check = {
   name: string;
   value: string;
-  valid?: boolean;
   validator?: Validator;
   validators?: Validator[];
   message?: string;
 };
 
-type Validity = {
-  name: string;
+export type Validity = Check & {
   valid: boolean;
   message?: string;
 };
@@ -22,7 +20,7 @@ const VALIDATORS: {
   username: (u) => typeof u === "string" && u.length >= 3,
   password: (p) => typeof p === "string" && p.length >= 3,
   email: (e) => typeof e === "string" && /.+@.+\..+/.test(e),
-  nonempty: (p) => typeof p === "string" && p.length >= 0,
+  nonempty: (p) => typeof p === "string" && p.length > 0,
 };
 const MESSAGES: { [checker: string]: string } = {
   username: "Username must be at least 3 characters",
@@ -31,13 +29,13 @@ const MESSAGES: { [checker: string]: string } = {
   nonempty: "Cannot be empty",
 };
 
-function _validate({ value }: Checker, validator: Validator) {
+function _validate({ value }: Check, validator: Validator) {
   return typeof validator === "string"
     ? VALIDATORS[validator](value)
     : validator(value);
 }
 
-export default function validate(checkers: Checker[]): Validity[] {
+export default function validate(checkers: Check[]): Validity[] {
   return checkers.map((f) => {
     const valid = f.validator
       ? _validate(f, f.validator)
@@ -47,8 +45,11 @@ export default function validate(checkers: Checker[]): Validity[] {
 
     return {
       ...f,
-      message: f.message ?? MESSAGES[f.name],
       valid,
+      message: valid
+        ? undefined
+        : f.message ??
+          MESSAGES[typeof f.validator === "string" ? f.validator : f.name],
     };
   });
 }

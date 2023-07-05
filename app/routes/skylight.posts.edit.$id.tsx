@@ -4,18 +4,20 @@ import { draft } from "~/lib/posts.server";
 import type { Post } from "~/lib/posts.server";
 import { userLoaderWrap } from "~/lib/loader";
 import { template } from "~/lib/themes.server";
-import { useRef, type FormEvent } from "react";
+import { useRef, type FormEvent, useState } from "react";
+import type { Validity } from "~/lib/validation.server";
 
 // type FormData = {};
 
 type LoaderData = {
   post: Post;
 };
-type FormData = {
-  title?: string;
-  slug?: string;
-  html?: string;
-};
+// type FormData = {
+//   title?: string;
+//   slug?: string;
+//   html?: string;
+// };
+type UpdateResponse = { errors?: Validity[] };
 
 export const handle = {
   sidebar: (match: RouteMatch, matches: RouteMatch[]) => {
@@ -45,21 +47,35 @@ export const loader = userLoaderWrap(async ({ params, request }) => {
   };
 });
 
-async function submit(action: string, event: FormEvent, form: HTMLFormElement) {
-  event.preventDefault();
-  const fd = new FormData(form.current);
-  fd.append("action", action);
-  const resp = await fetch("/skylight/posts/update/" + fd.get("id"), {
-    method: "post",
-    body: fd,
-  });
-  console.log(await resp.json());
-}
-
 export default function SkylightIndex() {
   const { post } = useLoaderData<LoaderData>();
   const form = useRef<HTMLFormElement>(null);
-  let errors: FormData = {};
+  const [errors, setErrors] = useState<Validity[] | undefined>();
+  const field = (n: string) => errors?.find((f) => f.name === n);
+  const formError = field("form");
+  const title = field("title");
+  const slug = field("slug");
+  const html = field("html");
+
+  async function submit(
+    action: string,
+    event: FormEvent,
+    form: HTMLFormElement
+  ) {
+    event.preventDefault();
+    const fd = new FormData(form);
+    fd.append("action", action);
+
+    for (const [e, es] of fd.entries()) {
+      console.log(e, es);
+    }
+
+    const resp = await fetch("/skylight/posts/update/" + fd.get("id"), {
+      method: "post",
+      body: fd,
+    }).then((r) => r.json() as UpdateResponse);
+    setErrors(resp.errors);
+  }
 
   return (
     <div className="p-5 w-full">
@@ -120,6 +136,7 @@ export default function SkylightIndex() {
               className="join-item btn-xs btn btn-outline"
               type="radio"
               name="type"
+              value="post"
               aria-label="Post"
               defaultChecked={post.type === "post"}
             />
@@ -127,6 +144,7 @@ export default function SkylightIndex() {
               className="join-item btn-xs btn btn-outline"
               type="radio"
               name="type"
+              value="page"
               aria-label="Page"
               defaultChecked={post.type === "page"}
             />
@@ -134,20 +152,27 @@ export default function SkylightIndex() {
         </div>
 
         <div className="form-control my-5">
+          {formError && !formError.valid && (
+            <label className="label">
+              <span className="label-text font-bold text-error">
+                {formError.message || "There was an error"}
+              </span>
+            </label>
+          )}
           <label className="label">
             <span className="label-text font-bold">Title</span>
           </label>
           <input
             type="text"
             className={`input input-bordered w-full ${
-              errors.title ? "input-error" : ""
+              errors && title && !title.valid ? "input-error" : ""
             }`}
             name="title"
             defaultValue={post.title ?? ""}
           />
           <label className="label">
-            {errors.title ? (
-              <span className="label-text-alt text-error">{errors.title}</span>
+            {title?.message ? (
+              <span className="label-text-alt text-error">{title.message}</span>
             ) : (
               ""
             )}
@@ -159,14 +184,14 @@ export default function SkylightIndex() {
           <input
             type="text"
             className={`input input-bordered w-full ${
-              errors.slug ? "input-error" : ""
+              errors && slug && !slug.valid ? "input-error" : ""
             }`}
             name="slug"
             defaultValue={post.slug ?? ""}
           />
           <label className="label">
-            {errors.slug ? (
-              <span className="label-text-alt text-error">{errors.slug}</span>
+            {slug?.message ? (
+              <span className="label-text-alt text-error">{slug.message}</span>
             ) : (
               ""
             )}
@@ -175,17 +200,16 @@ export default function SkylightIndex() {
           <label className="label">
             <span className="label-text font-bold">Body</span>
           </label>
-          <input
-            type="text"
+          <textarea
             className={`input input-bordered w-full ${
-              errors.html ? "input-error" : ""
+              errors && html && !html.valid ? "input-error" : ""
             }`}
             name="html"
             defaultValue={post.html ?? ""}
           />
           <label className="label">
-            {errors.html ? (
-              <span className="label-text-alt text-error">{errors.html}</span>
+            {html?.message ? (
+              <span className="label-text-alt text-error">{html.message}</span>
             ) : (
               ""
             )}

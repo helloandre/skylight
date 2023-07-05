@@ -1,4 +1,4 @@
-import type { ActionFunction } from "@remix-run/cloudflare";
+import type { ActionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
 import type { Post } from "~/lib/posts.server";
 import { publish, save, unpublish, draft } from "~/lib/posts.server";
@@ -6,43 +6,52 @@ import { getFromSession } from "~/lib/users.server";
 
 type UpdateAction = "save" | "publish" | "unpublish";
 
-export const action: ActionFunction = async ({ request, params }) => {
+export async function action({ request, params }: ActionArgs) {
   const user = await getFromSession(request);
-  if (!user) {
-    return json({ errors: { form: "invalid user" } });
-  }
-  if (!params.id) {
-    return json({ errors: { form: "unknown post" } });
-  }
-  const exists = await draft(params.id);
-  if (!exists) {
-    return json({ errors: { form: "unknown post" } });
-  }
-
   const form = await request.formData();
   const action = form.get("action") as UpdateAction;
   form.delete("action");
 
-  const post: any = {
-    id: params.id,
-  };
-  for (const [key, val] of form.entries()) {
-    post[key] = val;
+  if (!user) {
+    return json({
+      errors: [{ name: "form", valid: false, message: "invalid user" }],
+    });
+  }
+  if (!params.id) {
+    return json({
+      errors: [{ name: "form", valid: false, message: "unknown post" }],
+    });
+  }
+  const exists = await draft(params.id);
+  if (!exists) {
+    return json({
+      errors: [{ name: "form", valid: false, message: "unknown post" }],
+    });
   }
 
-  post.plaintext = "";
+  const post: Post = {
+    ...exists,
+    // TODO plaintext
+    plaintext: "",
+  };
+  for (const [key, val] of form.entries()) {
+    // @ts-ignore
+    post[key] = val;
+  }
 
   switch (action) {
     case "save":
       await save(post as Post, user);
       return json({});
     case "publish":
-      await publish(post as Post, user);
-      return json({});
+      const errors = await publish(post as Post, user);
+      return json({ errors });
     case "unpublish":
       await unpublish(post as Post, user);
       return json({});
     default:
-      return json({ errors: { form: "invalid action" } });
+      return json({
+        errors: [{ name: "form", valid: false, message: "invalid action" }],
+      });
   }
-};
+}

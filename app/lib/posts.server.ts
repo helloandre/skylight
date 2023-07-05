@@ -4,6 +4,8 @@ import { getUser, type User } from "./users.server";
 import { tags } from "./tags.server";
 import { randomHex } from "./crypto.server";
 import { now } from "./time";
+import type { Check } from "./validation.server";
+import validation from "./validation.server";
 
 export type Post = {
   id: string;
@@ -39,6 +41,7 @@ export type NewPost = {
   id: string;
   status: "draft";
   type: "post" | "page";
+  slug?: string;
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -114,7 +117,8 @@ export async function create(user: User) {
   };
 
   await setStatus(post);
-  return KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
+  await save(post as Post, user);
+  return post.id;
 }
 
 export async function publish(
@@ -122,6 +126,22 @@ export async function publish(
   user: User,
   dangerouslyDoNotUpdateStatus = false
 ) {
+  const validity = validate(post);
+  if (validity.some(({ valid }) => !valid)) {
+    return validity;
+  }
+
+  const exists = await published(post.slug);
+  if (exists && exists.id !== post.id) {
+    return [
+      {
+        name: "slug",
+        valid: false,
+        message: `post with slug ${post.slug} already exists`,
+      },
+    ];
+  }
+
   post.status = "published";
   post.updated_at = now();
   post.updated_by = user.id;
@@ -133,11 +153,12 @@ export async function publish(
     post.published_by = user.id;
   }
 
-  // only used when seeding
+  // only set to true when seeding
   if (!dangerouslyDoNotUpdateStatus) {
     await setStatus(post);
   }
-  return KV().put(`${POSTS_PUBLISHED}.${post.slug}`, JSON.stringify(post));
+  await save(post, user);
+  await KV().put(`${POSTS_PUBLISHED}.${post.slug}`, JSON.stringify(post));
 }
 export async function unpublish(post: Post, user: User) {
   post.status = "draft";
@@ -145,7 +166,7 @@ export async function unpublish(post: Post, user: User) {
   post.updated_by = user.id;
 
   await setStatus(post);
-  await KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
+  await save(post, user);
   return KV().delete(`${POSTS_PUBLISHED}.${post.slug}`);
 }
 
@@ -177,9 +198,9 @@ export async function seed(posts: Post[], user: User) {
 // @TODO use DO or D1
 async function setStatus(post: Post | NewPost) {
   const posts = ((await KV().get<PostsList>(POSTS_LIST, "json")) || [])
-    .filter(({ id }) => id !== post.id)
+    .filter((p) => p.id !== post.id && p.id !== post.slug)
     .concat({
-      id: post.id,
+      id: post.status === "published" ? post.slug : post.id,
       status: post.status,
       updated_at: post.updated_at,
       type: post.type,
@@ -216,6 +237,28 @@ async function hydrate(post: Post | null) {
   }
 
   return post;
+}
+
+function validate(post: any) {
+  const checks: Check[] = [
+    {
+      name: "title",
+      value: post.title,
+      validator: "nonempty",
+    },
+    {
+      name: "slug",
+      value: post.slug,
+      validator: "nonempty",
+    },
+    {
+      name: "html",
+      value: post.html,
+      validator: "nonempty",
+    },
+  ];
+
+  return validation(checks);
 }
 
 function KV() {

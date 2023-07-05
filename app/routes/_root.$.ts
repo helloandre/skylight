@@ -3,7 +3,7 @@ import { published } from "~/lib/posts.server";
 import { loaderWrap } from "~/lib/loader";
 
 export const loader = loaderWrap(async ({ params }) => {
-  const slug = (params["slug"] || "").replace(/\/$/, "");
+  const slug = (params["*"] || "").replace(/\/$/, "");
   const obj = await published(slug);
 
   if (!obj) {
@@ -14,6 +14,7 @@ export const loader = loaderWrap(async ({ params }) => {
     }).then(
       (html) =>
         new Response(html, {
+          status: 404,
           headers: { "Content-Type": "text/html; charset=utf-8" },
         })
     );

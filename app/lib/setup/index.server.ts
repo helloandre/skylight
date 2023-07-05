@@ -35,6 +35,7 @@ export async function setupData({ user }: { user: User }) {
   const tag = await saveTag(TAGS[0]);
 
   POSTS.forEach((p) => {
+    p.id = randomHex(20);
     p.author_ids = [user.id];
     p.created_at = now();
     p.created_by = user.id;

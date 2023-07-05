@@ -22,6 +22,7 @@ export const loader: LoaderFunction = async () => {
 
 export default function SkylightIndex() {
   const { posts } = useLoaderData<LoaderData>();
+  console.log(posts);
 
   return (
     <div className="p-5 w-full">

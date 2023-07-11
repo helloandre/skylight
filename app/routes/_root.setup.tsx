@@ -58,7 +58,7 @@ export const action: ActionFunction = async ({ request }) => {
     });
   }
 
-  await setupTheme({ url: siteUrl, title: siteTitle });
+  await setupTheme({ url: siteUrl, title: siteTitle }, user);
   await setupData({ user });
 
   const session = await getSession(request);

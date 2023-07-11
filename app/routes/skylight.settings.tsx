@@ -11,6 +11,14 @@ import { userActionWrap } from "~/lib/action";
 //   siteDescription: string;
 // };
 
+export const handle = {
+  navbar: () => (
+    <h1 key="title" className="text-2xl">
+      Skylight Settings
+    </h1>
+  ),
+};
+
 export const action = userActionWrap(async ({ request }) => {
   const formData = await request.formData();
   const siteTitle = formData.get("siteTitle") as string;

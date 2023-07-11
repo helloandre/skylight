@@ -1,4 +1,4 @@
-import { template } from "~/lib/themes.server";
+import { render } from "~/lib/themes.server";
 import { draft } from "~/lib/posts.server";
 import { loaderWrap } from "~/lib/loader";
 
@@ -7,7 +7,7 @@ export const loader = loaderWrap(async ({ params, request }) => {
   const obj = await draft(id);
 
   if (!obj) {
-    return template("error404", {
+    return render("error404", {
       relativeUrl: new URL(request.url).pathname,
       // @TODO context helper
       context: ["error"],
@@ -23,7 +23,7 @@ export const loader = loaderWrap(async ({ params, request }) => {
   // TODO support custom template names
   const templateName = obj.type === "post" ? "post" : "page";
 
-  return template(templateName, {
+  return render(templateName, {
     relativeUrl: new URL(request.url).pathname,
     post: obj,
     authors: obj.authors,

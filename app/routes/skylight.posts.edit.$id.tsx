@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { draft } from "~/lib/posts.server";
 import type { Post } from "~/lib/posts.server";
 import { userLoaderWrap } from "~/lib/loader";
-import { template } from "~/lib/themes.server";
+import { render } from "~/lib/themes.server";
 import { useRef, type FormEvent, useState } from "react";
 import type { Validity } from "~/lib/validation.server";
 
@@ -23,6 +23,11 @@ export const handle = {
   sidebar: (match: RouteMatch, matches: RouteMatch[]) => {
     return [];
   },
+  navbar: () => (
+    <h1 key="title" className="text-2xl">
+      Edit Post
+    </h1>
+  ),
 };
 
 export const loader = userLoaderWrap(async ({ params, request }) => {
@@ -30,7 +35,7 @@ export const loader = userLoaderWrap(async ({ params, request }) => {
   const obj = await draft(id);
 
   if (!obj) {
-    return template("error404", {
+    return render("error404", {
       relativeUrl: new URL(request.url).pathname,
       // @TODO context helper
       context: ["error"],

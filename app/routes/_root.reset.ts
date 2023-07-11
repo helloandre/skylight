@@ -15,7 +15,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   await KV.delete("v1.themes.active");
   await KV.delete("v1.themes.list");
 
-  const users = await KV.list({ prefix: "v1.users.user", limit: 1000 });
+  const users = await KV.list({ prefix: "v1.users", limit: 1000 });
   for (const key of users.keys) {
     await KV.delete(key.name);
   }

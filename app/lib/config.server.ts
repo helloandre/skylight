@@ -17,13 +17,13 @@ export type SkylightConfiguration = {
   };
 };
 
-export function config(path?: string) {
+export function config<T = any>(path?: string) {
   if (cache === null) {
     const KV = env("KV") as KVNamespace;
-    cache = KV.get(CONFIG_BASE, "json");
+    cache = KV.get<SkylightConfiguration>(CONFIG_BASE, "json");
   }
 
-  return cache.then((c) => (path === undefined ? c : get(c, path)));
+  return cache.then((c) => (path === undefined ? c : get(c, path)) as T);
 }
 
 /**
@@ -32,12 +32,14 @@ export function config(path?: string) {
  */
 export function save(path: string | any, value?: any) {
   const KV = env("KV") as KVNamespace;
-  return config()
+  return config<SkylightConfiguration>()
     .then((c) =>
       KV.put(
         CONFIG_BASE,
         JSON.stringify(value === undefined ? path : set(c, path, value))
       )
     )
-    .then(() => (cache = null));
+    .then(() => {
+      cache = null;
+    });
 }

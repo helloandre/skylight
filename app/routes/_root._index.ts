@@ -1,7 +1,7 @@
 import type { V2_MetaFunction } from "@remix-run/cloudflare";
 import { loaderWrap } from "~/lib/loader";
 import { list } from "~/lib/posts.server";
-import { template } from "~/lib/themes.server";
+import { render } from "~/lib/themes.server";
 
 export const meta: V2_MetaFunction = () => {
   return [{ title: "New Remix App" }];
@@ -15,7 +15,7 @@ export const loader = loaderWrap(async () => {
     status: "published",
   });
 
-  return template("index", {
+  return render("index", {
     relativeUrl: "/",
     posts: posts.results,
     // @TODO context helper

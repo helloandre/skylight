@@ -1,4 +1,5 @@
 export const THEME = {
+  name: "casper",
   templates: {
     author: `{{!< default}}
     {{!-- The tag above means - insert everything in this file into the {body} of the default.hbs template --}}
@@ -97,7 +98,7 @@ export const THEME = {
     {{ghost_head}}
 
 </head>
-<body class="{{body_class}} is-head-{{#match @custom.navigation_layout "Logo on cover"}}left-logo{{else match @custom.navigation_layout "Logo in the middle"}}middle-logo{{else}}stacked{{/match}}{{#match @custom.title_font "=" "Elegant serif"}} has-serif-title{{/match}}{{#match @custom.body_font "=" "Modern sans-serif"}} has-sans-body{{/match}}{{#if @custom.show_publication_cover}} has-cover{{/if}}">
+<body class="{{body_class}} {{{block "body_class"}}} is-head-{{#match @custom.navigation_layout "Logo on cover"}}left-logo{{else match @custom.navigation_layout "Logo in the middle"}}middle-logo{{else}}stacked{{/match}}{{#match @custom.title_font "=" "Elegant serif"}} has-serif-title{{/match}}{{#match @custom.body_font "=" "Modern sans-serif"}} has-sans-body{{/match}}{{#if @custom.show_publication_cover}} has-cover{{/if}}">
 <div class="viewport">
 
     <header id="gh-head" class="gh-head outer{{#match @custom.header_style "Hidden"}} is-header-hidden{{/match}}">
@@ -356,6 +357,7 @@ were looking for, let's give them some alternative stuff to read. --}}
   
   </div>
   </main>
+  {{#contentFor "body_class"}}{{#match @custom.header_section_layout "Side by side"}} has-side-about{{/match}}{{#match @custom.header_section_layout "Large background"}}{{#if @site.cover_image}} is-head-transparent has-background-about{{else}} has-side-about{{/if}}{{/match}}{{#match @custom.header_section_layout "Typographic profile"}}{{#if @site.icon}} has-typographic-about{{else}} has-side-about{{/if}}{{/match}}{{/contentFor}}
   `,
     page: `{{!< default}}
 
@@ -712,7 +714,7 @@ C22.32,8.481,24.301,9.057,26.013,10.047z">
   },
 };
 
-export const CONFIG = {
+export const DEFAULTS = {
   posts_per_page: 25,
   image_sizes: {
     xxs: {

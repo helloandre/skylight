@@ -6,11 +6,13 @@ import type {
   TemplatesObj,
   PaginationSettings,
 } from "skylight-theme-compat-ghost";
-import ghostTheme from "skylight-theme-compat-ghost";
+import ghostTheme, { layout_tree } from "skylight-theme-compat-ghost";
 import type { SkylightConfiguration } from "./config.server";
-import { config as getConfig } from "./config.server";
+import { config as getConfig, save as saveConfig } from "./config.server";
 import type { Post } from "./posts.server";
 import type { User } from "./users.server";
+import { randomHex } from "./crypto.server";
+import { now } from "./time";
 
 type TemplateKVFormat = {
   template: string;
@@ -25,12 +27,13 @@ type TemplateContextParam = {
   posts?: Post[];
   pagination?: PaginationSettings;
 };
-
-const KEY_BASE = "v1.themes";
-const THEME_LIST = `${KEY_BASE}.list`;
-const THEME_ACTIVE = `${KEY_BASE}.active`;
-
-export type ThemeObj = {
+export type ThemeListFormat = {
+  name: string;
+  id: string;
+  uploaded_at: string;
+  uploaded_by: string;
+}[];
+export type ThemeUploadObj = {
   name: string;
   assets: {
     [idx: string]: string;
@@ -43,11 +46,57 @@ export type ThemeObj = {
   partials?: {
     [idx: string]: string;
   };
+  config: any;
+};
+export type ThemeData = {
+  themeId: string;
+  name: string;
+  type: "asset" | "partial" | "template" | "config";
+  content: string;
 };
 
-export async function save({ name, assets, templates, partials }: ThemeObj) {
+const KEY_BASE = "v1.themes";
+const THEME_LIST = `${KEY_BASE}.list`;
+const THEME_ACTIVE = `${KEY_BASE}.active`;
+
+export async function render(
+  templateName: string,
+  context: TemplateContextParam
+) {
+  const id = await active();
+  if (!id) {
+    throw new Error("theme not set");
+  }
+
+  const globalConfig = (await getConfig()) as SkylightConfiguration;
+  // you shouldn't be able to even get here without getting to /setup first
+  // but anyway
+  if (!globalConfig) {
+    throw new Error(`theme ${id} does not exist`);
+  }
+
+  return ghostTheme
+    .withTemplates(await _templates(templateName, id))
+    .withPartials(await _partials(id))
+    .withConfig(
+      globalConfig.ghost as GhostConfiguration,
+      globalConfig.site as SiteConfiguration,
+      globalConfig.themes[id] as ThemeConfiguration
+    )
+    .render(templateName, {
+      ...context,
+      navigation: globalConfig.site.navigation || [],
+      secondary_navigation: globalConfig.site.secondary_navigation || [],
+    });
+}
+
+export async function create(
+  { name, assets, templates, partials, config }: ThemeUploadObj,
+  user: User
+) {
   const KV = env("KV") as KVNamespace;
-  const themeBase = `${KEY_BASE}.${name}`;
+  const themeId = randomHex(20);
+  const themeBase = `${KEY_BASE}.${themeId}`;
   // step 1: save assets to their own key based on the name
   // which we can derive later based on the url requested
   // to derive:
@@ -62,10 +111,11 @@ export async function save({ name, assets, templates, partials }: ThemeObj) {
       `${themeBase}.templates.${key}`,
       JSON.stringify({
         template: templates[key],
-        deps: buildDeps(templates[key]),
+        deps: layout_tree(key, templates),
       })
     )
   );
+
   // step 2.1: save an index of the templates so we can register them
   // @TODO optimizae this by building dependencies array
   // dep array should look like { templates: [], partials: []}
@@ -80,6 +130,7 @@ export async function save({ name, assets, templates, partials }: ThemeObj) {
         KV.put(`${themeBase}.partials.${key}`, partials[key])
       )
     : [];
+
   // step 3.1: save an index of the partials so we can register them
   // @TODO optimizae this by building dependencies array
   const partialIndexPromise = KV.put(
@@ -87,37 +138,62 @@ export async function save({ name, assets, templates, partials }: ThemeObj) {
     JSON.stringify(Object.keys(partials || {}))
   );
 
+  // step 4: save the config as included in the package.json config
+  const configPromise = saveConfig(`themes.${themeId}`, config);
+
   return Promise.all(
     assetPromises
-      .concat([templateIndexPromise, partialIndexPromise])
+      .concat([templateIndexPromise, partialIndexPromise, configPromise])
       .concat(templatePromises)
       .concat(partialPromises)
-  ).then(() => {
-    // final step is to update the list of available themes
-    // but we *don't* activate it automatically
-    return addTheme(name);
-  });
+  )
+    .then(async () => {
+      // final step is to update the list of available themes
+      // but we *don't* activate it automatically
+      // we also don't filter by anything, we blindly concat to the existing list
+      const existing = await list();
+      return KV.put(
+        THEME_LIST,
+        JSON.stringify(
+          existing.concat({
+            name,
+            id: themeId,
+            uploaded_at: now(),
+            uploaded_by: user.id,
+          })
+        )
+      );
+    })
+    .then(() => themeId);
 }
 
-export function list() {
+export async function list() {
   const KV = env("KV") as KVNamespace;
-  return KV.get<string[]>(THEME_LIST, "json");
+  return (await KV.get<ThemeListFormat>(THEME_LIST, "json")) || [];
 }
 
-async function addTheme(theme: string) {
+export async function activate(id: string) {
   const KV = env("KV") as KVNamespace;
-  let existing = await list();
-  existing = existing === null ? [] : existing.filter((i) => i !== theme);
-  return KV.put(THEME_LIST, JSON.stringify(existing.concat(theme)));
+  await KV.put(THEME_ACTIVE, id);
 }
 
-function buildDeps(template: string) {
-  return [];
-}
+export async function del(id: string) {
+  const current = await active();
+  if (current === id) {
+    return false;
+  }
 
-export async function activate(name: string) {
   const KV = env("KV") as KVNamespace;
-  await KV.put(THEME_ACTIVE, name);
+
+  const themes = await list();
+  KV.put(THEME_LIST, JSON.stringify(themes.filter((t) => t.id !== id)));
+
+  const { keys } = await KV.list({ prefix: `${KEY_BASE}.${id}`, limit: 1000 });
+  for (const key of keys) {
+    await KV.delete(key.name);
+  }
+
+  return true;
 }
 
 export function active() {
@@ -129,36 +205,33 @@ export function active() {
  * returns the custom config as defined in the package.json config.custom property
  * @see https://ghost.org/docs/themes/custom-settings/
  */
-export async function config(): Promise<ThemeConfiguration | null> {
+export async function config() {
   const theme = await active();
-  return (await getConfig(`themes.${theme}`)) as ThemeConfiguration;
+  return await getConfig<ThemeConfiguration>(`themes.${theme}`);
 }
 
 export async function asset(path: string) {
-  const name = await active();
-  if (!name) {
+  const id = await active();
+  if (!id) {
     throw new Error(`no theme active`);
   }
 
   const KV = env("KV") as KVNamespace;
-  return KV.get(`${KEY_BASE}.${name}.assets.${path}`);
+  return KV.get(`${KEY_BASE}.${id}.assets.${path}`);
 }
 
 /**
  * @TODO optimize this by building a depedencies array
- * so we can only load the templates we need based on the entry template
+ * so we can only load the partials we need based on the entry template
  */
-async function _partials(name: string) {
+async function _partials(id: string) {
   const KV = env("KV") as KVNamespace;
-  const keys = await KV.get<string[]>(
-    `${KEY_BASE}.${name}.partialsIdx`,
-    "json"
-  );
+  const keys = await KV.get<string[]>(`${KEY_BASE}.${id}.partialsIdx`, "json");
   if (!keys) {
     return {};
   }
   const promises = keys.map((key) =>
-    KV.get(`${KEY_BASE}.${name}.partials.${key}`)
+    KV.get(`${KEY_BASE}.${id}.partials.${key}`)
   );
 
   return Promise.all(promises).then((partials) => {
@@ -170,64 +243,37 @@ async function _partials(name: string) {
   });
 }
 
-/**
- * @TODO optimize this by building a depedencies array
- * so we can only load the templates we need based on the entry template
- */
-async function _templates(themeName: string) {
+async function _templates(baseName: string, id: string) {
   const KV = env("KV") as KVNamespace;
-  const keys = await KV.get<string[]>(
-    `${KEY_BASE}.${themeName}.templatesIdx`,
+  const keys = await KV.get<string[]>(`${KEY_BASE}.${id}.templatesIdx`, "json");
+  if (!keys) {
+    throw new Error(`theme ${id} does not exist`);
+  }
+
+  const base = await KV.get<TemplateKVFormat>(
+    `${KEY_BASE}.${id}.templates.${baseName}`,
     "json"
   );
-  if (!keys) {
-    throw new Error(`theme ${themeName} does not exist`);
+  if (!base) {
+    throw new Error(`template ${baseName} does not exist`);
   }
-  const promises = keys.map((key) =>
-    KV.get<TemplateKVFormat>(
-      `${KEY_BASE}.${themeName}.templates.${key}`,
-      "json"
-    ).then((t) => (t === null ? "" : t.template))
+
+  // we ignore the deps of the parent templates as we've already got a complete dep tree in base.deps
+  const promises = base.deps.map((d) =>
+    KV.get<TemplateKVFormat>(`${KEY_BASE}.${id}.templates.${d}`, "json").then(
+      (t) => (t === null ? "" : t.template)
+    )
   );
 
   return Promise.all(promises).then((templates) => {
     // TODO figure out how to make TS happy that we're *going* to make this object the correct type
     // @ts-ignore
-    const templatesObj: TemplatesObj = {};
-    keys.forEach((key, idx) => {
+    const templatesObj: TemplatesObj = {
+      [baseName]: base.template,
+    };
+    base.deps.forEach((key, idx) => {
       templatesObj[key] = templates[idx] || "";
     });
     return templatesObj;
   });
-}
-
-export async function template(
-  template: string,
-  context: TemplateContextParam
-) {
-  const name = await active();
-  if (!name) {
-    throw new Error("theme not set");
-  }
-
-  const globalConfig = (await getConfig()) as SkylightConfiguration;
-  // you shouldn't be able to even get here without getting to /setup first
-  // but anyway
-  if (!globalConfig) {
-    throw new Error(`theme ${name} does not exist`);
-  }
-
-  return ghostTheme
-    .withTemplates(await _templates(name))
-    .withPartials(await _partials(name))
-    .withConfig(
-      globalConfig.ghost as GhostConfiguration,
-      globalConfig.site as SiteConfiguration,
-      globalConfig.themes[name] as ThemeConfiguration
-    )
-    .render(template, {
-      ...context,
-      navigation: globalConfig.site.navigation || [],
-      secondary_navigation: globalConfig.site.secondary_navigation || [],
-    });
 }

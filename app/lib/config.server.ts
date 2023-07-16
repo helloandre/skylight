@@ -17,13 +17,17 @@ export type SkylightConfiguration = {
   };
 };
 
-export function config<T = any>(path?: string) {
+export function config(path?: "ghost"): Promise<GhostConfiguration>;
+export function config(path?: "site"): Promise<SiteConfiguration>;
+export function config(path?: "theme"): Promise<ThemeConfiguration>;
+export function config(path?: undefined): Promise<SkylightConfiguration>;
+export function config(path?: string) {
   if (cache === null) {
-    const KV = env("KV") as KVNamespace;
+    const KV = env("KV");
     cache = KV.get<SkylightConfiguration>(CONFIG_BASE, "json");
   }
 
-  return cache.then((c) => (path === undefined ? c : get(c, path)) as T);
+  return cache.then((c) => (path === undefined ? c : get(c, path)));
 }
 
 /**
@@ -31,8 +35,8 @@ export function config<T = any>(path?: string) {
  *          it will completely overwrite the config
  */
 export function save(path: string | any, value?: any) {
-  const KV = env("KV") as KVNamespace;
-  return config<SkylightConfiguration>()
+  const KV = env("KV");
+  return config()
     .then((c) =>
       KV.put(
         CONFIG_BASE,

@@ -5,7 +5,7 @@ A blogging platform built entirely on Workers Pages with Ghost-compatable themes
 Built With:
 
 - [Remix](https://remix.run)
-- [Workers Pages](https://developers.cloudflare.com/pages/)
+- [Cloudflare Pages](https://developers.cloudflare.com/pages/)
 - [DaisyUI](https://daisyui.com/)
 
 ## Installation
@@ -36,11 +36,11 @@ Functionality:
 - proper editor experience, maybe https://tiptap.dev/
 - membership signup
 - author signup
+- author-via Cloudflare Access
 - authors on posts
 - tags on posts
 - sending emails
 - settings
-- upload theme
 
 Tech:
 

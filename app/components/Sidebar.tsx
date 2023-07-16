@@ -14,27 +14,12 @@ export default function Sidebar() {
           </span>
         </a>
       </li>
-      {sidebars.length ? (
+      {sidebars.length > 0 &&
         sidebars.map((match) =>
           match.handle
             ?.sidebar(match, matches)
             .map((s: any, idx: number) => <li key={idx}>{s}</li>)
-        )
-      ) : (
-        <>
-          <li>
-            <a className="text-secondary" href="/skylight/posts/new">
-              Create Post
-            </a>
-          </li>
-          <li>
-            <a href="/skylight/settings">Settings</a>
-          </li>
-          <li>
-            <a href="/skylight/themes">Themes</a>
-          </li>
-        </>
-      )}
+        )}
     </ul>
   );
 }

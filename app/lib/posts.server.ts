@@ -4,8 +4,6 @@ import { getUser, type User } from "./users.server";
 import { tags } from "./tags.server";
 import { randomHex } from "./crypto.server";
 import { now } from "./time";
-import type { Check } from "./validation.server";
-import validation from "./validation.server";
 
 export type Post = {
   id: string;
@@ -71,11 +69,13 @@ const POSTS_DRAFT = `${POSTS_BASE}.draft`;
 const POSTS_PUBLISHED = `${POSTS_BASE}.published`;
 
 export function published(slug: string) {
-  return KV().get<Post>(`${POSTS_PUBLISHED}.${slug}`, "json").then(hydrate);
+  return env("KV")
+    .get<Post>(`${POSTS_PUBLISHED}.${slug}`, "json")
+    .then(hydrate);
 }
 
 export function draft(id: string) {
-  return KV().get<Post>(`${POSTS_DRAFT}.${id}`, "json").then(hydrate);
+  return env("KV").get<Post>(`${POSTS_DRAFT}.${id}`, "json").then(hydrate);
 }
 
 export async function list({
@@ -87,7 +87,7 @@ export async function list({
   limit = Math.min(limit, 10);
 
   // TODO replace with DO or D1
-  const list = (await KV().get<PostsList>(POSTS_LIST, "json")) || [];
+  const list = (await env("KV").get<PostsList>(POSTS_LIST, "json")) || [];
   list.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
 
   return {
@@ -126,22 +126,6 @@ export async function publish(
   user: User,
   dangerouslyDoNotUpdateStatus = false
 ) {
-  const validity = validate(post);
-  if (validity.some(({ valid }) => !valid)) {
-    return validity;
-  }
-
-  const exists = await published(post.slug);
-  if (exists && exists.id !== post.id) {
-    return [
-      {
-        name: "slug",
-        valid: false,
-        message: `post with slug ${post.slug} already exists`,
-      },
-    ];
-  }
-
   post.status = "published";
   post.updated_at = now();
   post.updated_by = user.id;
@@ -158,7 +142,7 @@ export async function publish(
     await setStatus(post);
   }
   await save(post, user);
-  await KV().put(`${POSTS_PUBLISHED}.${post.slug}`, JSON.stringify(post));
+  await env("KV").put(`${POSTS_PUBLISHED}.${post.slug}`, JSON.stringify(post));
 }
 export async function unpublish(post: Post, user: User) {
   post.status = "draft";
@@ -167,13 +151,13 @@ export async function unpublish(post: Post, user: User) {
 
   await setStatus(post);
   await save(post, user);
-  return KV().delete(`${POSTS_PUBLISHED}.${post.slug}`);
+  return env("KV").delete(`${POSTS_PUBLISHED}.${post.slug}`);
 }
 
 export async function save(post: Post, user: User) {
   post.updated_at = now();
   post.updated_by = user.id;
-  return KV().put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
+  return env("KV").put(`${POSTS_DRAFT}.${post.id}`, JSON.stringify(post));
 }
 
 export async function seed(posts: Post[], user: User) {
@@ -192,12 +176,13 @@ export async function seed(posts: Post[], user: User) {
     }
   }
 
-  await KV().put(POSTS_LIST, JSON.stringify(list));
+  await env("KV").put(POSTS_LIST, JSON.stringify(list));
 }
 
 // @TODO use DO or D1
 async function setStatus(post: Post | NewPost) {
-  const posts = ((await KV().get<PostsList>(POSTS_LIST, "json")) || [])
+  const KV = env("KV");
+  const posts = ((await KV.get<PostsList>(POSTS_LIST, "json")) || [])
     .filter((p) => p.id !== post.id && p.id !== post.slug)
     .concat({
       id: post.status === "published" ? post.slug : post.id,
@@ -205,7 +190,7 @@ async function setStatus(post: Post | NewPost) {
       updated_at: post.updated_at,
       type: post.type,
     });
-  return KV().put(POSTS_LIST, JSON.stringify(posts));
+  return KV.put(POSTS_LIST, JSON.stringify(posts));
 }
 
 async function hydrate(post: Post | null) {
@@ -237,30 +222,4 @@ async function hydrate(post: Post | null) {
   }
 
   return post;
-}
-
-function validate(post: any) {
-  const checks: Check[] = [
-    {
-      name: "title",
-      value: post.title,
-      validator: "nonempty",
-    },
-    {
-      name: "slug",
-      value: post.slug,
-      validator: "nonempty",
-    },
-    {
-      name: "html",
-      value: post.html,
-      validator: "nonempty",
-    },
-  ];
-
-  return validation(checks);
-}
-
-function KV() {
-  return env("KV") as KVNamespace;
 }

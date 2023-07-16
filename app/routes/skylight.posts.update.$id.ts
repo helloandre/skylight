@@ -1,31 +1,26 @@
-import type { ActionArgs } from "@remix-run/cloudflare";
 import { json } from "@remix-run/cloudflare";
+import { userActionWrap } from "~/lib/action";
 import type { Post } from "~/lib/posts.server";
-import { publish, save, unpublish, draft } from "~/lib/posts.server";
-import { getFromSession } from "~/lib/users.server";
+import { publish, unpublish, draft, published, save } from "~/lib/posts.server";
+import { type User } from "~/lib/users.server";
+import { validate } from "~/lib/validation";
 
 type UpdateAction = "save" | "publish" | "unpublish";
 
-export async function action({ request, params }: ActionArgs) {
-  const user = await getFromSession(request);
+export const action = userActionWrap(async ({ request, params, context }) => {
   const form = await request.formData();
   const action = form.get("action") as UpdateAction;
   form.delete("action");
 
-  if (!user) {
-    return json({
-      errors: [{ name: "form", valid: false, message: "invalid user" }],
-    });
-  }
   if (!params.id) {
     return json({
-      errors: [{ name: "form", valid: false, message: "unknown post" }],
+      fields: [{ name: "form", valid: false, message: "unknown post" }],
     });
   }
   const exists = await draft(params.id);
   if (!exists) {
     return json({
-      errors: [{ name: "form", valid: false, message: "unknown post" }],
+      fields: [{ name: "form", valid: false, message: "unknown post" }],
     });
   }
 
@@ -39,19 +34,54 @@ export async function action({ request, params }: ActionArgs) {
     post[key] = val;
   }
 
+  const fields = validate([
+    {
+      name: "title",
+      value: post.title,
+      validator: "nonempty",
+    },
+    {
+      name: "slug",
+      value: post.slug,
+      validator: "nonempty",
+    },
+    {
+      name: "html",
+      value: post.html,
+      validator: "nonempty",
+    },
+  ]);
+
+  if (!fields.every(({ valid }) => valid)) {
+    return json({ fields }, 400);
+  }
+
   switch (action) {
     case "save":
-      await save(post as Post, user);
+      await save(post as Post, context.user as User);
       return json({});
     case "publish":
-      const errors = await publish(post as Post, user);
-      return json({ errors });
+      const exists = await published(post.slug);
+      const publishFields = validate([
+        {
+          name: "slug",
+          value: post.slug,
+          validator: () => !!exists && exists.id === post.id,
+          message: `post with slug ${post.slug} already exists`,
+        },
+      ]);
+      if (!publishFields.every(({ valid }) => valid)) {
+        return json({ fields }, 400);
+      }
+
+      await publish(post as Post, context.user as User);
+      return json({});
     case "unpublish":
-      await unpublish(post as Post, user);
+      await unpublish(post as Post, context.user as User);
       return json({});
     default:
       return json({
-        errors: [{ name: "form", valid: false, message: "invalid action" }],
+        fields: [{ name: "form", valid: false, message: "invalid action" }],
       });
   }
-}
+});

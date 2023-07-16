@@ -5,19 +5,12 @@ import type { Post } from "~/lib/posts.server";
 import { userLoaderWrap } from "~/lib/loader";
 import { render } from "~/lib/themes.server";
 import { useRef, type FormEvent, useState } from "react";
-import type { Validity } from "~/lib/validation.server";
-
-// type FormData = {};
+import type { Validity } from "~/lib/validation";
 
 type LoaderData = {
   post: Post;
 };
-// type FormData = {
-//   title?: string;
-//   slug?: string;
-//   html?: string;
-// };
-type UpdateResponse = { errors?: Validity[] };
+type UpdateResponse = { fields?: Validity[] };
 
 export const handle = {
   sidebar: (match: RouteMatch, matches: RouteMatch[]) => {
@@ -71,15 +64,11 @@ export default function SkylightIndex() {
     const fd = new FormData(form);
     fd.append("action", action);
 
-    for (const [e, es] of fd.entries()) {
-      console.log(e, es);
-    }
-
     const resp = await fetch("/skylight/posts/update/" + fd.get("id"), {
       method: "post",
       body: fd,
     }).then((r) => r.json() as UpdateResponse);
-    setErrors(resp.errors);
+    setErrors(resp.fields);
   }
 
   return (

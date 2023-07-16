@@ -6,7 +6,6 @@ import JSZIP from "jszip";
 import { randomHex } from "~/lib/crypto.server";
 import { now } from "~/lib/time";
 import type { User } from "~/lib/users.server";
-import { getFromSession } from "~/lib/users.server";
 
 const REQUIRED_PROPS: (keyof ThemeUploadObj)[] = [
   "name",
@@ -16,7 +15,7 @@ const REQUIRED_PROPS: (keyof ThemeUploadObj)[] = [
   "partials",
 ];
 
-export const action = adminActionWrap(async ({ request }) => {
+export const action = adminActionWrap(async ({ request, context }) => {
   if (request.method !== "POST") {
     return json({ message: "Method not allowed" }, { status: 405 });
   }
@@ -78,8 +77,7 @@ export const action = adminActionWrap(async ({ request }) => {
   }
 
   try {
-    const user = (await getFromSession(request)) as User;
-    const id = await create(theme, user);
+    const id = await create(theme, context.user as User);
     return json({ id, name: theme.name, uploaded_at: now() });
   } catch (e) {
     console.log(e);

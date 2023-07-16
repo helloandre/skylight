@@ -5,60 +5,74 @@ import { config } from "../lib/config.server";
 import { create as createUser } from "~/lib/users.server";
 import { getSession, setSessionUser } from "~/lib/sessions";
 import { setupTheme, setupData } from "~/lib/setup/index.server";
+import { type Validity, validate, setValid, field } from "~/lib/validation";
 
-type FormData = {
-  siteTitle: string;
-  siteUrl: string;
-  name: string;
-  email: string;
-  password: string;
-};
+type ActionData = { fields?: Validity[] };
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
-  const siteTitle = formData.get("siteTitle") as string;
-  const siteUrl = formData.get("siteUrl") as string;
+  const title = formData.get("title") as string;
+  const url = formData.get("url") as string;
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const values = { siteTitle, siteUrl, email };
+  const fields = validate([
+    {
+      name: "title",
+      validator: "nonempty",
+      value: title,
+    },
+    {
+      name: "url",
+      validator: "fullurl",
+      value: url,
+    },
+    {
+      name: "name",
+      validator: "nonempty",
+      value: name,
+    },
+    {
+      name: "email",
+      validator: "email",
+      value: email,
+    },
+    {
+      name: "password",
+      validator: "password",
+      value: password,
+    },
+  ]);
 
-  if (!siteTitle || !siteTitle.length) {
-    return json({
-      errors: { siteTitle: "Site Title must be non-empty" },
-      values,
-    });
-  }
-  if (!siteUrl || !siteUrl.length) {
-    return json({
-      errors: { siteUrl: "Site URL must be non-empty" },
-      values,
-    });
-  }
-  try {
-    new URL(siteUrl);
-  } catch (e) {
-    return json({
-      errors: {
-        siteUrl: "Site URL must include the full domain name and protocol",
-      },
-      values,
-    });
+  if (!fields.every(({ valid }) => valid)) {
+    return json({ fields });
   }
 
-  const user = await createUser({ email, password, role: "admin", name });
+  const user = await createUser({
+    email,
+    password,
+    name,
+    role: "admin",
+    withSignup: false,
+  });
   if (!user) {
-    return json({
-      errors: {
-        email: "Invalid email or password",
-        password: "Invalid email or password",
-      },
-      values,
+    setValid(fields, {
+      name: "email",
+      valid: false,
+      message: "Invalid email or password",
+      value: email,
     });
+    setValid(fields, {
+      name: "password",
+      valid: false,
+      message: "Invalid email or password",
+      value: password,
+    });
+    return json({ fields });
   }
 
-  await setupTheme({ url: siteUrl, title: siteTitle }, user);
+  await setupTheme({ url, title }, user);
   await setupData({ user });
 
   const session = await getSession(request);
@@ -75,7 +89,12 @@ export const loader: LoaderFunction = async () => {
 };
 
 export default function Index() {
-  const actionData = useActionData<{ errors?: FormData; values?: FormData }>();
+  const { fields = [] } = (useActionData() || {}) as ActionData;
+  const url = field(fields, "url");
+  const title = field(fields, "title");
+  const name = field(fields, "name");
+  const email = field(fields, "email");
+  const password = field(fields, "password");
 
   return (
     <div className="container mx-auto">
@@ -91,19 +110,21 @@ export default function Index() {
                 <input
                   type="text"
                   className={`input input-bordered w-full ${
-                    actionData?.errors?.siteUrl ? "input-error" : ""
+                    url && !url.valid ? "input-error" : ""
                   }`}
-                  name="siteUrl"
-                  defaultValue={actionData?.values?.siteUrl ?? ""}
+                  name="url"
+                  defaultValue={url?.value ?? ""}
                 />
                 <label className="label">
-                  {actionData?.errors?.siteUrl ? (
-                    <span className="label-text-alt text-error">
-                      {actionData?.errors?.siteUrl}
-                    </span>
-                  ) : (
-                    ""
-                  )}
+                  {url && !url.valid ? (
+                    <p
+                      className="text-xs text-error"
+                      role="alert"
+                      id="url-error"
+                    >
+                      {url?.message}
+                    </p>
+                  ) : null}
                 </label>
 
                 <label className="label">
@@ -112,19 +133,21 @@ export default function Index() {
                 <input
                   type="text"
                   className={`input input-bordered w-full ${
-                    actionData?.errors?.siteTitle ? "input-error" : ""
+                    title && !title?.valid ? "input-error" : ""
                   }`}
-                  name="siteTitle"
-                  defaultValue={actionData?.values?.siteTitle ?? ""}
+                  name="title"
+                  defaultValue={title?.value ?? ""}
                 />
                 <label className="label">
-                  {actionData?.errors?.siteTitle ? (
-                    <span className="label-text-alt text-error">
-                      {actionData?.errors?.siteTitle}
-                    </span>
-                  ) : (
-                    ""
-                  )}
+                  {title && !title?.valid ? (
+                    <p
+                      className="text-xs text-error"
+                      role="alert"
+                      id="title-error"
+                    >
+                      {title?.message}
+                    </p>
+                  ) : null}
                 </label>
 
                 <label className="label">
@@ -133,19 +156,21 @@ export default function Index() {
                 <input
                   type="text"
                   className={`input input-bordered w-full ${
-                    actionData?.errors?.name ? "input-error" : ""
+                    name && !name?.valid ? "input-error" : ""
                   }`}
                   name="name"
-                  defaultValue={actionData?.values?.name ?? ""}
+                  defaultValue={name?.value ?? ""}
                 />
                 <label className="label">
-                  {actionData?.errors?.name ? (
-                    <span className="label-text-alt text-error">
-                      {actionData?.errors?.name}
-                    </span>
-                  ) : (
-                    ""
-                  )}
+                  {name && !name?.valid ? (
+                    <p
+                      className="text-xs text-error"
+                      role="alert"
+                      id="name-error"
+                    >
+                      {name?.message}
+                    </p>
+                  ) : null}
                 </label>
 
                 <label className="label">
@@ -154,19 +179,21 @@ export default function Index() {
                 <input
                   type="email"
                   className={`input input-bordered w-full ${
-                    actionData?.errors?.email ? "input-error" : ""
+                    email && !email?.valid ? "input-error" : ""
                   }`}
+                  defaultValue={email?.value ?? ""}
                   name="email"
-                  defaultValue={actionData?.values?.email ?? ""}
                 />
                 <label className="label">
-                  {actionData?.errors?.email ? (
-                    <span className="label-text-alt text-error">
-                      {actionData?.errors?.email}
-                    </span>
-                  ) : (
-                    ""
-                  )}
+                  {email && !email?.valid ? (
+                    <p
+                      className="text-xs text-error"
+                      role="alert"
+                      id="email-error"
+                    >
+                      {email?.message}
+                    </p>
+                  ) : null}
                 </label>
 
                 <label className="label">
@@ -175,18 +202,20 @@ export default function Index() {
                 <input
                   type="password"
                   className={`input input-bordered w-full ${
-                    actionData?.errors?.password ? "input-error" : ""
+                    password && !password?.valid ? "input-error" : ""
                   }`}
                   name="password"
                 />
                 <label className="label">
-                  {actionData?.errors?.password ? (
-                    <span className="label-text-alt text-error">
-                      {actionData?.errors?.password}
-                    </span>
-                  ) : (
-                    ""
-                  )}
+                  {password && !password?.valid ? (
+                    <p
+                      className="text-xs text-error"
+                      role="alert"
+                      id="password-error"
+                    >
+                      {password?.message}
+                    </p>
+                  ) : null}
                 </label>
               </div>
               <div className="card-actions justify-end">

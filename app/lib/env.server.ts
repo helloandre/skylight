@@ -14,6 +14,7 @@ export function get() {
   return GLOBAL_ENV;
 }
 
+export function env(prop: "KV"): KVNamespace;
 export function env(prop?: keyof Env) {
   return prop ? GLOBAL_ENV[prop] : GLOBAL_ENV;
 }

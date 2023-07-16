@@ -13,6 +13,7 @@ import {
   THEME as CASPER_THEME,
 } from "./casper.server";
 import { DEFAULTS as SOLO_DEFAULTS, THEME as SOLO_THEME } from "./solo.server";
+import { THEME as DEFAULT_THEME } from "./default.server";
 import { POSTS, TAGS, SITE } from "./seed_data.server";
 import type { User } from "../users.server";
 import { now } from "../time";
@@ -55,6 +56,8 @@ export async function setupTheme(
     },
     user
   );
+
+  await createTheme(DEFAULT_THEME, user, "default", true);
 }
 
 export async function setupData({ user }: { user: User }) {

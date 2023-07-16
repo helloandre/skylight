@@ -25,6 +25,7 @@ export function userLoaderWrap(fn: LoaderFunction) {
     if (!user) {
       return redirect("/skylight/login");
     }
+    args.context.user = user;
 
     return fn(args);
   };
@@ -41,6 +42,7 @@ export function adminLoaderWrap(fn: LoaderFunction) {
     if (!user || user.role !== "admin") {
       return redirect("/skylight/login");
     }
+    args.context.user = user;
 
     return fn(args);
   };

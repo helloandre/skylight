@@ -17,16 +17,23 @@ export type Validity = Check & {
 const VALIDATORS: {
   [validator: string]: ValidatorFunction;
 } = {
-  username: (u) => typeof u === "string" && u.length >= 3,
-  password: (p) => typeof p === "string" && p.length >= 3,
+  password: (p) => typeof p === "string" && p.length >= 6,
   email: (e) => typeof e === "string" && /.+@.+\..+/.test(e),
   nonempty: (p) => typeof p === "string" && p.length > 0,
+  fullurl: (u) => {
+    try {
+      new URL(u);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
 };
 const MESSAGES: { [checker: string]: string } = {
-  username: "Username must be at least 3 characters",
-  password: "Password must be at least 3 characters",
+  password: "Password must be at least 6 characters",
   email: "Email is invalid",
   nonempty: "Cannot be empty",
+  fullurl: "Must be a complete url, eg. http://example.com",
 };
 
 function _validate({ value }: Check, validator: Validator) {
@@ -35,7 +42,7 @@ function _validate({ value }: Check, validator: Validator) {
     : validator(value);
 }
 
-export default function validate(checkers: Check[]): Validity[] {
+export function validate(checkers: Check[]): Validity[] {
   return checkers.map((f) => {
     const valid = f.validator
       ? _validate(f, f.validator)
@@ -52,4 +59,12 @@ export default function validate(checkers: Check[]): Validity[] {
           MESSAGES[typeof f.validator === "string" ? f.validator : f.name],
     };
   });
+}
+
+export function field(fields: Validity[], name: string) {
+  return fields.find((f) => f.name === name);
+}
+
+export function setValid(fields: Validity[], valid: Validity) {
+  return fields.map((c) => (c.name === valid.name ? valid : c));
 }

@@ -18,13 +18,12 @@ export type Tag = {
 const TAG_BASE = "v1.tags";
 
 export async function tags(ids: string[]) {
-  const KV = env("KV") as KVNamespace;
-  const kvTags = (await KV.get<Tag[]>(TAG_BASE, "json")) || [];
+  const kvTags = (await env("KV").get<Tag[]>(TAG_BASE, "json")) || [];
   return kvTags.filter((t) => ids.includes(t.id));
 }
 
 export async function save(tag: Tag) {
-  const KV = env("KV") as KVNamespace;
+  const KV = env("KV");
   const kvTags = (await KV.get<Tag[]>(TAG_BASE, "json")) || [];
   tag.id = randomHex(20);
 

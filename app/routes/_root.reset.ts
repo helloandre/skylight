@@ -11,7 +11,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
 
   // wipe all things
-  const KV = env("KV") as KVNamespace;
+  const KV = env("KV");
   await KV.delete("v1.themes.active");
   await KV.delete("v1.themes.list");
 

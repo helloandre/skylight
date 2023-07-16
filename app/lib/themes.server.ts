@@ -92,10 +92,12 @@ export async function render(
 
 export async function create(
   { name, assets, templates, partials, config }: ThemeUploadObj,
-  user: User
+  user: User,
+  id?: string,
+  doNotList?: boolean
 ) {
-  const KV = env("KV") as KVNamespace;
-  const themeId = randomHex(20);
+  const KV = env("KV");
+  const themeId = id || randomHex(20);
   const themeBase = `${KEY_BASE}.${themeId}`;
   // step 1: save assets to their own key based on the name
   // which we can derive later based on the url requested
@@ -148,33 +150,35 @@ export async function create(
       .concat(partialPromises)
   )
     .then(async () => {
-      // final step is to update the list of available themes
-      // but we *don't* activate it automatically
-      // we also don't filter by anything, we blindly concat to the existing list
-      const existing = await list();
-      return KV.put(
-        THEME_LIST,
-        JSON.stringify(
-          existing.concat({
-            name,
-            id: themeId,
-            uploaded_at: now(),
-            uploaded_by: user.id,
-          })
-        )
-      );
+      if (!doNotList) {
+        // final step is to update the list of available themes
+        // but we *don't* activate it automatically
+        // we also don't filter by anything, we blindly concat to the existing list
+        const existing = await list();
+        return KV.put(
+          THEME_LIST,
+          JSON.stringify(
+            existing.concat({
+              name,
+              id: themeId,
+              uploaded_at: now(),
+              uploaded_by: user.id,
+            })
+          )
+        );
+      }
+
+      return Promise.resolve();
     })
     .then(() => themeId);
 }
 
 export async function list() {
-  const KV = env("KV") as KVNamespace;
-  return (await KV.get<ThemeListFormat>(THEME_LIST, "json")) || [];
+  return (await env("KV").get<ThemeListFormat>(THEME_LIST, "json")) || [];
 }
 
 export async function activate(id: string) {
-  const KV = env("KV") as KVNamespace;
-  await KV.put(THEME_ACTIVE, id);
+  await env("KV").put(THEME_ACTIVE, id);
 }
 
 export async function del(id: string) {
@@ -183,7 +187,7 @@ export async function del(id: string) {
     return false;
   }
 
-  const KV = env("KV") as KVNamespace;
+  const KV = env("KV");
 
   const themes = await list();
   KV.put(THEME_LIST, JSON.stringify(themes.filter((t) => t.id !== id)));
@@ -197,8 +201,7 @@ export async function del(id: string) {
 }
 
 export function active() {
-  const KV = env("KV") as KVNamespace;
-  return KV.get(THEME_ACTIVE);
+  return env("KV").get(THEME_ACTIVE);
 }
 
 /**
@@ -216,8 +219,7 @@ export async function asset(path: string) {
     throw new Error(`no theme active`);
   }
 
-  const KV = env("KV") as KVNamespace;
-  return KV.get(`${KEY_BASE}.${id}.assets.${path}`);
+  return env("KV").get(`${KEY_BASE}.${id}.assets.${path}`);
 }
 
 /**
@@ -225,7 +227,7 @@ export async function asset(path: string) {
  * so we can only load the partials we need based on the entry template
  */
 async function _partials(id: string) {
-  const KV = env("KV") as KVNamespace;
+  const KV = env("KV");
   const keys = await KV.get<string[]>(`${KEY_BASE}.${id}.partialsIdx`, "json");
   if (!keys) {
     return {};
@@ -244,7 +246,7 @@ async function _partials(id: string) {
 }
 
 async function _templates(baseName: string, id: string) {
-  const KV = env("KV") as KVNamespace;
+  const KV = env("KV");
   const keys = await KV.get<string[]>(`${KEY_BASE}.${id}.templatesIdx`, "json");
   if (!keys) {
     throw new Error(`theme ${id} does not exist`);
@@ -255,6 +257,9 @@ async function _templates(baseName: string, id: string) {
     "json"
   );
   if (!base) {
+    if (id !== "default") {
+      return _templates(baseName, "default");
+    }
     throw new Error(`template ${baseName} does not exist`);
   }
 

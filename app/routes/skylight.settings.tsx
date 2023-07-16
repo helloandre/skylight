@@ -1,49 +1,43 @@
 import { useActionData, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/cloudflare";
-import type { SkylightConfiguration } from "../lib/config.server";
 import { config as getConfig, save as saveConfig } from "../lib/config.server";
-import { userLoaderWrap } from "~/lib/loader";
-import { userActionWrap } from "~/lib/action";
-
-// type FormData = {
-//   siteTitle: string;
-//   siteUrl: string;
-//   siteDescription: string;
-// };
+import { adminLoaderWrap } from "~/lib/loader";
+import { adminActionWrap } from "~/lib/action";
 
 export const handle = {
-  navbar: () => (
+  navbar: () => [
     <h1 key="title" className="text-2xl">
       Skylight Settings
-    </h1>
-  ),
+    </h1>,
+  ],
 };
 
-export const action = userActionWrap(async ({ request }) => {
-  const formData = await request.formData();
-  const siteTitle = formData.get("siteTitle") as string;
-  // const siteUrl = formData.get("siteUrl") as string;
-  const siteDescription = formData.get("siteDescription") as string;
-  const config = (await getConfig()) as SkylightConfiguration;
+export const action = adminActionWrap(
+  async ({ request }) => {
+    const formData = await request.formData();
+    const siteTitle = formData.get("siteTitle") as string;
+    const siteDescription = formData.get("siteDescription") as string;
+    const config = await getConfig();
 
-  const newConfig = {
-    site: {
-      ...config.site,
-      description: siteDescription,
-      title: siteTitle,
-    },
-    ghost: {
-      ...config.ghost,
-      // url: siteUrl,
-    },
-  };
-  await saveConfig(newConfig);
+    const newConfig = {
+      site: {
+        ...config.site,
+        description: siteDescription,
+        title: siteTitle,
+      },
+      ghost: {
+        ...config.ghost,
+      },
+    };
+    await saveConfig(newConfig);
 
-  return json({ actionData: newConfig, actionErrors: {} });
-});
+    return json({ actionData: newConfig, actionErrors: {} });
+  },
+  { json: true }
+);
 
-export const loader = userLoaderWrap(async () => {
-  return json((await getConfig()) as SkylightConfiguration);
+export const loader = adminLoaderWrap(async () => {
+  return json(await getConfig());
 });
 
 export default function Index() {

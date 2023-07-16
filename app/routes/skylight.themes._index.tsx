@@ -7,11 +7,11 @@ import type { ThemeListFormat } from "~/lib/themes.server";
 import { list, active } from "~/lib/themes.server";
 
 export const handle = {
-  navbar: () => (
-    <h1 key="title" className="text-2xl">
+  navbar: () => [
+    <span key="title" className="text-2xl me-3">
       Themes
-    </h1>
-  ),
+    </span>,
+  ],
 };
 
 export const loader = adminLoaderWrap(async () => {

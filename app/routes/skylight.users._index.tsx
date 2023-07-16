@@ -5,6 +5,7 @@ import Avatar from "~/components/Avatar";
 import { useState } from "react";
 import { toast } from "~/lib/toast";
 import { adminLoaderWrap } from "~/lib/loader";
+import { SkylightEventTarget } from "~/lib/events";
 
 type LoaderData = {
   users: {
@@ -12,6 +13,22 @@ type LoaderData = {
     total: number;
   };
 };
+
+export const handle = {
+  navbar: () => [
+    <span key="title" className="text-2xl me-3">
+      Users
+    </span>,
+    <span
+      key="invite"
+      className="btn btn-xs btn-secondary btn-outline"
+      onClick={() => ee.emit("invite")}
+    >
+      invite
+    </span>,
+  ],
+};
+const ee = new SkylightEventTarget("users_index");
 
 export const loader = adminLoaderWrap(async () => {
   return {
@@ -40,6 +57,7 @@ export default function SkylightIndex() {
         toast("an error occurred", { type: "error" });
       });
   }
+  ee.on("invite", makeNewUser);
 
   function copySignupLink() {
     if (navigator && signupLink) {
@@ -62,14 +80,7 @@ export default function SkylightIndex() {
 
   return (
     <div className="p-5 w-full">
-      <div className="p-5">
-        <span className="text-2xl me-3">Users</span>
-        <span
-          className="btn btn-xs btn-secondary btn-outline"
-          onClick={makeNewUser}
-        >
-          invite
-        </span>
+      <div className="pb-5">
         {signupLink && (
           <div className="my-3 alert alert-success">
             <svg

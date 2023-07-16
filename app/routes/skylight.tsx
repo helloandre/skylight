@@ -5,34 +5,58 @@ import { userLoaderWrap } from "~/lib/loader";
 import Sidebar from "~/components/Sidebar";
 import Navbar from "~/components/Navbar";
 import Toast from "~/components/Toast";
+import { type User } from "~/lib/users.server";
 
 export const handle = {
-  sidebar: () => [
-    <a
-      key="nav-create-post"
-      className="text-secondary"
-      href="/skylight/posts/new"
-    >
-      Create Post
-    </a>,
-    <a key="nav-settings" href="/skylight/settings">
-      Settings
-    </a>,
-    <a key="nav-themes" href="/skylight/themes">
-      Themes
-    </a>,
-    <a key="nav-users" href="/skylight/users">
-      Users
-    </a>,
-  ],
+  sidebar: ({ data }: { data: { section: string } }) => {
+    return [
+      <a
+        key="nav-create-post"
+        className="text-secondary"
+        href="/skylight/posts/new"
+      >
+        Create Post
+      </a>,
+      <a
+        key="nav-settings"
+        href="/skylight"
+        className={`${!data.section ? "bg-base-300" : ""}`}
+      >
+        Posts
+      </a>,
+      <a
+        key="nav-settings"
+        href="/skylight/settings"
+        className={`${data.section === "settings" ? "bg-base-300" : ""}`}
+      >
+        Settings
+      </a>,
+      <a
+        key="nav-themes"
+        href="/skylight/themes"
+        className={`${data.section === "themes" ? "bg-base-300" : ""}`}
+      >
+        Themes
+      </a>,
+      <a
+        key="nav-users"
+        href="/skylight/users"
+        className={`${data.section === "users" ? "bg-base-300" : ""}`}
+      >
+        Users
+      </a>,
+    ];
+  },
 };
 
 export const meta: V2_MetaFunction = () => {
   return [{ title: "Skylight Dashboard" }];
 };
 
-export const loader = userLoaderWrap(async () => ({
+export const loader = userLoaderWrap(async ({ request, context }) => ({
   title: (await config("site")).title,
+  section: new URL(request.url).pathname.split("/")[2],
+  loggedInUser: context.user as User,
 }));
 
 export default function Skylight() {

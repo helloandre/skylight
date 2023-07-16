@@ -15,10 +15,10 @@ export default function Sidebar() {
         </a>
       </li>
       {sidebars.length > 0 &&
-        sidebars.map((match) =>
+        sidebars.map((match, idx1) =>
           match.handle
-            ?.sidebar(match, matches)
-            .map((s: any, idx: number) => <li key={idx}>{s}</li>)
+            ?.sidebar(match)
+            .map((s: any, idx2: number) => <li key={idx1 + idx2}>{s}</li>)
         )}
     </ul>
   );

@@ -1,11 +1,14 @@
 import { useMatches } from "@remix-run/react";
+import { type User } from "~/lib/users.server";
+import Avatar from "./Avatar";
 
 export default function Navbar() {
   const matches = useMatches();
+  const { loggedInUser }: { loggedInUser: User } = matches[1].data;
   const navbars = matches.filter((m) => m.handle?.navbar);
   return (
     <div className="w-full navbar bg-base-300">
-      <div className="flex-none lg:hidden">
+      <div className="flex-1 lg:hidden">
         <label htmlFor="dash-drawer" className="btn btn-square btn-ghost">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -22,10 +25,24 @@ export default function Navbar() {
           </svg>
         </label>
       </div>
-      <div className="flex-none hidden lg:block">
-        <ul className="menu menu-horizontal">
-          {navbars.map((m) => m.handle?.navbar(m.data))}
+      <div className="flex-1 hidden lg:block">
+        <ul className="ps-5 flex flex-row">
+          {navbars.map((m, idx) =>
+            m.handle?.navbar(m.data).map((im: any, iidx: number) => (
+              <li
+                key={idx + iidx}
+                className="content-center inline-flex flex-wrap"
+              >
+                {im}
+              </li>
+            ))
+          )}
         </ul>
+      </div>
+      <div className="flex-none">
+        <a href={`/skylight/users/edit/${loggedInUser.id}`}>
+          <Avatar user={loggedInUser} />
+        </a>
       </div>
     </div>
   );

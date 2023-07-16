@@ -4,7 +4,16 @@ import { list } from "~/lib/posts.server";
 import type { Post } from "~/lib/posts.server";
 import { DateTime } from "luxon";
 
-// type FormData = {};
+export const handle = {
+  navbar: () => [
+    <span key="title" className="text-2xl me-3">
+      Posts
+    </span>,
+    <a key="new" href="/skylight/posts/new">
+      <span className="btn btn-xs btn-secondary btn-outline">new</span>
+    </a>,
+  ],
+};
 
 type LoaderData = {
   posts: {
@@ -25,12 +34,6 @@ export default function SkylightIndex() {
 
   return (
     <div className="p-5 w-full">
-      <div className="p-5">
-        <span className="text-2xl me-3">Posts</span>
-        <a href="/skylight/posts/new">
-          <span className="btn btn-xs btn-secondary btn-outline">new</span>
-        </a>
-      </div>
       <table className="table">
         <thead>
           <tr>

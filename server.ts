@@ -11,7 +11,10 @@ export const onRequest = createPagesFunctionHandler({
   build,
   getLoadContext: (context) => {
     init(context.env);
-    return context.env;
+    return {
+      ...context.env,
+      waitUntil: context.waitUntil,
+    };
   },
   mode: process.env.NODE_ENV,
 });

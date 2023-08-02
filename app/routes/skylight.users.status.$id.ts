@@ -4,9 +4,6 @@ import { setStatus, type User } from "~/lib/users.server";
 
 export const action = adminActionWrap(
   async ({ request, params, context }) => {
-    if (request.method !== "PUT") {
-      return json({}, 405);
-    }
     const { status } = await request.json<{ status?: User["status"] }>();
     if (!params.id || !status || params.id === (context.user as User).id) {
       return json({}, 400);
@@ -15,5 +12,5 @@ export const action = adminActionWrap(
     await setStatus(params.id, status);
     return json({});
   },
-  { json: true }
+  { json: true, allowedMethods: ["PUT"] }
 );

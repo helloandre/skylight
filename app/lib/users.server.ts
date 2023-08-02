@@ -59,6 +59,27 @@ type ListParams = {
   limit: number;
   offset: number;
 };
+type SavePasswordParams = {
+  id: User["id"];
+  password: string;
+};
+
+const ALLOWED_SAVE_FIELDS = [
+  "email",
+  "role",
+  "name",
+  "profile_image",
+  "bio",
+  "website",
+  "location",
+  "facebook",
+  "twitter",
+  "cover_image",
+  "visibility",
+  "locale",
+  "meta_title",
+  "meta_description",
+];
 
 export async function getFromSession(request: Request) {
   const session = await getSession(request);
@@ -154,6 +175,37 @@ export async function signup({ email, name, code, password }: SignupParams) {
   await KV.delete(`${USERS_BASE}.signup_code_to_id.${code}`);
 
   return user.user;
+}
+
+export async function save(user: User) {
+  const existing = await getUserObject({ id: user.id });
+  if (!existing) {
+    throw new Error(`unknown user`);
+  }
+  // TODO fix typing
+  ALLOWED_SAVE_FIELDS.forEach((field) => {
+    // @ts-ignore
+    if (user[field] !== undefined) {
+      // @ts-ignore
+      existing.user[field] = user[field];
+    }
+  });
+
+  return env("KV").put(
+    `${USERS_BASE}.user.${user.id}`,
+    JSON.stringify(existing)
+  );
+}
+
+export async function savePassword({ id, password }: SavePasswordParams) {
+  const existing = await getUserObject({ id });
+  if (!existing) {
+    throw new Error(`unknown user`);
+  }
+
+  existing.password = await hash(password);
+
+  return env("KV").put(`${USERS_BASE}.user.${id}`, JSON.stringify(existing));
 }
 
 export async function setStatus(id: string, status: User["status"]) {

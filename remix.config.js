@@ -7,6 +7,16 @@ module.exports = {
   serverBuildPath: "functions/[[path]].js",
   serverConditions: ["worker"],
   serverDependenciesToBundle: "all",
+  serverNodeBuiltinsPolyfill: {
+    modules: {
+      path: "empty",
+      fs: "empty",
+      url: true,
+      stream: true,
+      events: true,
+      util: true,
+    },
+  },
   serverMainFields: ["browser", "module", "main"],
   serverMinify: true,
   serverModuleFormat: "esm",

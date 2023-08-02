@@ -5,10 +5,20 @@ import { getFromSession } from "./users.server";
 
 type WrapperOptions = {
   json?: boolean;
+  allowedMethods?: string[];
 };
 
-export function userActionWrap(fn: ActionFunction) {
+export function userActionWrap(fn: ActionFunction, options?: WrapperOptions) {
   return async function actionWrapper(args: ActionArgs) {
+    if (
+      options?.allowedMethods &&
+      !options?.allowedMethods?.includes(args.request.method)
+    ) {
+      return options?.json
+        ? json({ message: "Method not allowed" }, { status: 405 })
+        : new Response("Method not allowed", { status: 405 });
+    }
+
     const installed = await configServer.config("ghost");
     if (!installed) {
       return redirect("/setup");
@@ -26,6 +36,15 @@ export function userActionWrap(fn: ActionFunction) {
 
 export function adminActionWrap(fn: ActionFunction, options?: WrapperOptions) {
   return async function actionWrapper(args: ActionArgs) {
+    if (
+      options?.allowedMethods &&
+      !options?.allowedMethods?.includes(args.request.method)
+    ) {
+      return options?.json
+        ? json({ message: "Method not allowed" }, { status: 405 })
+        : new Response("Method not allowed", { status: 405 });
+    }
+
     const installed = await configServer.config("ghost");
     if (!installed) {
       return options?.json ? json({}, 401) : redirect("/setup");

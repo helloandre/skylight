@@ -1,4 +1,3 @@
-import type { RouteMatch } from "@remix-run/react";
 import { useLoaderData } from "@remix-run/react";
 import { draft } from "~/lib/posts.server";
 import type { Post } from "~/lib/posts.server";
@@ -13,14 +12,12 @@ type LoaderData = {
 type UpdateResponse = { fields?: Validity[] };
 
 export const handle = {
-  sidebar: (match: RouteMatch, matches: RouteMatch[]) => {
-    return [];
-  },
-  navbar: () => (
-    <h1 key="title" className="text-2xl">
+  sidebar: () => [],
+  navbar: () => [
+    <span key="title" className="text-2xl me-3">
       Edit Post
-    </h1>
-  ),
+    </span>,
+  ],
 };
 
 export const loader = userLoaderWrap(async ({ params, request }) => {
